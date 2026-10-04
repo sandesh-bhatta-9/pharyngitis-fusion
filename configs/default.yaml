@@ -13,12 +13,12 @@ paths:
 # Column mapping. Run `python -m src.prepare_data --inspect` first and fix these names.
 columns:
   id: patient_ID
-  age: age
-  gender: gender
+  age: Age
+  gender: Gender
   # Columns that hold the physicians' diagnoses (matched case-insensitively).
-  diagnosis_regex: "^(diagnosis|diag|doctor|physician|dr)[ _-]?\\d+"
+  diagnosis_regex: "^(diagnosis|diag|doctor|physician|dr)\\s*[#_-]?\\s*\\d+"
   # Cell values that count as a "bacterial" vote. Every other non-empty value counts as non-bacterial.
-  bacterial_values: ["bacterial", "bacteria", "b", "1", "yes"]
+  bacterial_values: ["bacterial"]   # paper: Diagnosis #1..#9 = "Bacterial" / "Nonbacterial"
   # "auto" = every column that is not id/age/gender/diagnosis/meta/ignore. Or give an explicit list.
   symptoms: auto
   # Site / device columns: used only for stratification and subgroup analysis, never as model inputs.
@@ -28,9 +28,10 @@ columns:
   tie_rule: bacterial
 
 # Centor/McIsaac items -> symptom column names. Leave null if the item is not in the data.
+# PGUPharyngitis has fever (Pyrexia) and cough but no exudate or lymph-node items -> "modified" score.
 centor:
-  fever: null
-  cough: null
+  fever: Pyrexia
+  cough: Cough
   exudate: null
   nodes: null
 
