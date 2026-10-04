@@ -1,0 +1,2 @@
+model,g_mean,g_sd,g_split_median,g_unanimous_median,mannwhitney_p,spearman_g_vs_n_symptoms
+gated_convnext_tiny,0.4392849847077551,0.09324286813609577,0.417622112,0.45644580700000004,3.4494241403308848e-09,-0.010449563391297628

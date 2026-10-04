@@ -1,0 +1,2 @@
+backbone,symptom_model,r_observed,null_mean,null_95pct,p_perm,perms
+vit_small_patch14_dinov2,sym_lr,0.2881815664547537,-0.02172622530040606,0.05924589757440711,0.001996007984031936,500

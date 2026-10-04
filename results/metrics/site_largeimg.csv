@@ -1,0 +1,29 @@
+model,subset,phone,n,auc_within_phone
+img_lr_vit_small_patch14_dinov2,all images,Samsung S21 Ultra,382,0.554731443994602
+img_lr_vit_small_patch14_dinov2,all images,Xiaomi,290,0.6022414376117096
+img_lr_vit_small_patch14_dinov2,short side >= 500px,Samsung S21 Ultra,262,0.5682207207207206
+img_lr_vit_small_patch14_dinov2,short side >= 500px,Xiaomi,285,0.6107799999999999
+img_lr_convnext_tiny,all images,Samsung S21 Ultra,382,0.5527881241565452
+img_lr_convnext_tiny,all images,Xiaomi,290,0.551934689145452
+img_lr_convnext_tiny,short side >= 500px,Samsung S21 Ultra,262,0.5513963963963964
+img_lr_convnext_tiny,short side >= 500px,Xiaomi,285,0.5546000000000001
+stack_vit_small_patch14_dinov2,all images,Samsung S21 Ultra,382,0.5545371120107963
+stack_vit_small_patch14_dinov2,all images,Xiaomi,290,0.5975749963769866
+stack_vit_small_patch14_dinov2,short side >= 500px,Samsung S21 Ultra,262,0.5751351351351351
+stack_vit_small_patch14_dinov2,short side >= 500px,Xiaomi,285,0.60503
+gated_vit_small_patch14_dinov2,all images,Samsung S21 Ultra,382,0.5804264507422401
+gated_vit_small_patch14_dinov2,all images,Xiaomi,290,0.5713637022366069
+gated_vit_small_patch14_dinov2,short side >= 500px,Samsung S21 Ultra,262,0.6312837837837838
+gated_vit_small_patch14_dinov2,short side >= 500px,Xiaomi,285,0.5778800000000001
+gated_convnext_tiny,all images,Samsung S21 Ultra,382,0.5914385964912279
+gated_convnext_tiny,all images,Xiaomi,290,0.539867639244481
+gated_convnext_tiny,short side >= 500px,Samsung S21 Ultra,262,0.6079054054054054
+gated_convnext_tiny,short side >= 500px,Xiaomi,285,0.54414
+phone,all images,Samsung S21 Ultra,382,0.4894736842105264
+phone,all images,Xiaomi,290,0.49159460895608903
+phone,short side >= 500px,Samsung S21 Ultra,262,0.485945945945946
+phone,short side >= 500px,Xiaomi,285,0.49190000000000006
+sym_lgbm,all images,Samsung S21 Ultra,382,0.5326585695006749
+sym_lgbm,all images,Xiaomi,290,0.5509299067677891
+sym_lgbm,short side >= 500px,Samsung S21 Ultra,262,0.5726013513513513
+sym_lgbm,short side >= 500px,Xiaomi,285,0.5522050000000001

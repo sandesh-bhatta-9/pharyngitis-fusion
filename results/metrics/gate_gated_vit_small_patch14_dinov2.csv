@@ -1,0 +1,2 @@
+model,g_mean,g_sd,g_split_median,g_unanimous_median,mannwhitney_p,spearman_g_vs_n_symptoms
+gated_vit_small_patch14_dinov2,0.4847821839510204,0.08714542533468728,0.472034542,0.503693698,3.1753981315039078e-06,-0.147526690279071

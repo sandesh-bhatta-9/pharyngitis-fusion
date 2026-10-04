@@ -1,0 +1,6 @@
+model,auc_all,auc_unanimous,auc_split,auc_within_phone,spearman_vote_share,n_unanimous,n_split
+phone,0.6182,0.6609,0.5839,0.485,0.28,230,505
+sym_lgbm,0.6159,0.5884,0.6109,0.606,0.1285,230,505
+img_lr_vit_small_patch14_dinov2,0.6715,0.7199,0.647,0.6094,0.2768,230,505
+stack_vit_small_patch14_dinov2,0.6785,0.7359,0.6542,0.618,0.273,230,505
+gated_vit_small_patch14_dinov2,0.6592,0.7819,0.6198,0.5983,0.2996,230,505

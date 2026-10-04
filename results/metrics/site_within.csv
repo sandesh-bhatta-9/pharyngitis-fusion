@@ -1,0 +1,11 @@
+phone,n,bacterial,model,auc_mean,auc_sd
+Samsung S21 Ultra,382,57,symptoms (LR),0.6268394062078272,0.008148568288386374
+Samsung S21 Ultra,382,57,image convnext_tiny (LR),0.49923886639676107,0.026746905676910918
+Samsung S21 Ultra,382,57,image convnext_tiny + symptoms (LR),0.5187044534412955,0.021769014882217684
+Samsung S21 Ultra,382,57,image vit_small_patch14_dinov2 (LR),0.5015708502024291,0.02537538655372698
+Samsung S21 Ultra,382,57,image vit_small_patch14_dinov2 + symptoms (LR),0.546051282051282,0.02088146619479399
+Xiaomi,290,127,symptoms (LR),0.5174097869668132,0.028871728746082646
+Xiaomi,290,127,image convnext_tiny (LR),0.5484082894546157,0.020065246984631257
+Xiaomi,290,127,image convnext_tiny + symptoms (LR),0.5359451234239891,0.026776040198559423
+Xiaomi,290,127,image vit_small_patch14_dinov2 (LR),0.5745519540118834,0.011183029419284802
+Xiaomi,290,127,image vit_small_patch14_dinov2 + symptoms (LR),0.5613158784599778,0.025833220784372956

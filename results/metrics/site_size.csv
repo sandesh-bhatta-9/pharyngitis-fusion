@@ -1,0 +1,4 @@
+features,auc_identify_phone,n
+image size,0.75425166997653,672
+convnext_tiny,0.9972106878497924,672
+vit_small_patch14_dinov2,0.9931846903773245,672
