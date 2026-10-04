@@ -1,29 +1,32 @@
-# Pre-registered analysis plan
+# Analysis decisions
 
-Fill this in and commit it **before** running E2 on the real data. Record the commit hash in the Methods.
-
-- Date frozen:
-- Commit:
+The study was planned before modelling (research plan, October 3, 2026), but the hypotheses were not formally frozen
+before the first results were seen. All analyses are therefore reported as exploratory. This file records the decisions
+that shape the results, so readers can check them against the code.
 
 ## Data
-- Labelling protocol (what each physician saw):
-- Tie rule:
-- Exclusions:
 
-## Primary outcome and metric
-- Outcome: majority-vote bacterial vs. non-bacterial (expert consensus, not culture).
-- Primary metric: AUC; unit of analysis for tests = fold AUC over 5 × 5 repeated CV.
+- Labels: physician consensus from photographs and symptoms (no microbiology). Majority vote of 3-9 diagnoses.
+- Ties (100 patients): counted as bacterial in the main analysis; non-bacterial and excluded as sensitivity analyses.
+- Exclusions: patient 666 (no image); 19/23, 218/256, 301/305 (identical photos, different records). n = 735.
+- Site: no city column; the EXIF phone model is used as a proxy (Samsung SM-G998B 382, Xiaomi 2201117SG 290, unknown 63).
 
-## Hypotheses (one-sided, α = 0.05, Holm across H1–H3)
-- H1: proposed fusion > best symptom-only model (sym_lr, sym_lgbm, sym_mlp, centor)
-- H2: proposed fusion > best image-only model (img_lr_*, ft_*)
-- H3: proposed fusion ≥ best standard fusion (late_*, early_*, stack_*), reported with CI
-- Proposed model name:
-- Minimum effect of interest: ΔAUC ≥ 0.02
+## Evaluation
 
-## Secondary and exploratory
-- Secondary: balanced accuracy, macro F1, Brier, calibration slope, net benefit (thresholds 0.1–0.5).
-- Exploratory (labelled as such): E3 ablations, E4 subgroups, E5 knock-outs and strata, E6, E7.
+- 5-fold cross-validation x 5 repeats, stratified on label x phone; folds in `data/processed/folds.csv`.
+- Inner 3-fold CV for hyperparameters, epochs (fusion) and the decision threshold (max balanced accuracy).
+- Fine-tuned CNNs: one repeat (5 folds) and a 15% validation split, for compute reasons.
+- Primary metric: AUC. Model comparisons: Nadeau-Bengio corrected resampled t-test on fold AUCs (one-sided),
+  DeLong per repeat, Holm across H1-H3.
 
-## Pivot rule
-- If symptom-only fold-mean AUC ≥ 0.90, the paper leads with the label-dependence analysis (E5/E7).
+## Hypotheses (gated fusion, DINOv2 features)
+
+- H1: better than the best symptom-only model.
+- H2: better than the best image-only model.
+- H3: at least as good as the best standard fusion model.
+- The "best" comparator in each group is chosen by its own cross-validated AUC, which makes the tests conservative.
+
+## Shortcut analyses (added after the phone imbalance was found in the data audit)
+
+Phone-only, image-size and photo-statistics baselines; phone identification; AUC within phone; models trained and
+tested within one phone; cross-phone transfer; large images only; shuffled-image control.

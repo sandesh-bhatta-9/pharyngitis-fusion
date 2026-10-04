@@ -44,7 +44,10 @@ def set_seed(seed: int):
 
 
 def torch_device():
+    """NVIDIA GPU if present, else Apple-silicon GPU, else CPU."""
     import torch
+    if torch.cuda.is_available():
+        return torch.device("cuda")
     return torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
 

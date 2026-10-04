@@ -1,0 +1,17 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # The unit tests only need the light dependencies (no PyTorch).
+      - run: pip install numpy scipy scikit-learn pandas pyyaml pillow openpyxl pytest
+      - run: python -m pytest -q tests

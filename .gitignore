@@ -13,3 +13,13 @@ __pycache__/
 logs/
 data/processed_tie_*/*
 !data/processed_tie_*/folds.csv
+.pytest_cache/
+.venv/
+# LaTeX build files
+paper/latex/*.aux
+paper/latex/*.bbl
+paper/latex/*.blg
+paper/latex/*.log
+paper/latex/*.out
+paper/latex/*.spl
+paper/*.zip

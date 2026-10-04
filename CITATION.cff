@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this code, fold assignments or predictions, please cite it as below."
+title: "Device and site shortcuts in smartphone pharyngitis AI: code for a multimodal benchmark on PGUPharyngitis"
+authors:
+  - given-names: Sandesh
+    family-names: Bhatta
+    affiliation: "Department of Computer Science, University at Albany, State University of New York"
+    orcid: "https://orcid.org/0009-0008-0399-0480"
+license: MIT
+date-released: 2026-10-04
+repository-code: "https://github.com/<your-username>/pharyngitis-fusion"
+keywords:
+  - pharyngitis
+  - smartphone imaging
+  - shortcut learning
+  - multimodal fusion
+  - deep learning
+references:
+  - type: dataset
+    title: "A publicly available pharyngitis dataset and baseline evaluations for bacterial or nonbacterial classification"
+    authors:
+      - family-names: Shojaei
+        given-names: Negar
+      - family-names: Rostami
+        given-names: Habib
+    doi: 10.6084/m9.figshare.28163513.v1
+    license: CC-BY-4.0
+    year: 2025
