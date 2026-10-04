@@ -10,6 +10,8 @@
 \usepackage{lineno}
 \usepackage[hidelinks]{hyperref}
 \usepackage{xurl}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
 
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \newcommand{\figfile}[2]{\IfFileExists{#1}{\includegraphics[width=#2]{#1}}{\fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}Missing file: \texttt{\detokenize{#1}}\vspace{2cm}}}}}
@@ -100,7 +102,49 @@ The study is reported following TRIPOD+AI \cite{collins2024tripodai}. All analys
 
 \begin{figure}[!htbp]
 \centering
-\figfile{figures/fig1_study_design.pdf}{\textwidth}
+\IfFileExists{figures/fig1_study_design.pdf}{\includegraphics[width=\textwidth]{figures/fig1_study_design.pdf}}{%
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw, rounded corners=2pt, align=center, text width=3.9cm, inner sep=4pt},
+  base/.style={box, dashed},
+  hdr/.style={font=\small\bfseries},
+  arr/.style={-{Latex[length=1.8mm]}, thick, gray!70!black}]
+% column headers
+\node[hdr] at (0,2.2) {Data};
+\node[hdr] at (4.9,2.2) {Inputs};
+\node[hdr] at (9.8,2.2) {Models};
+\node[hdr] at (14.7,2.2) {Evaluation};
+% data
+\node[box] (d1) at (0,0.6) {PGUPharyngitis: 742 patients,\\2 cities, 2 phones,\\4--9 physician votes each};
+\node[box] (d2) at (0,-1.9) {Excluded: 7\\(1 without image,\\6 sharing a photo)};
+\node[box] (d3) at (0,-4.9) {735 analysed\\205 bacterial (27.9\%),\\ties counted bacterial};
+\draw[arr] (d1) -- (d2);
+\draw[arr] (d2) -- (d3);
+% inputs
+\node[box] (i1) at (4.9,-0.9) {Throat photograph\\phone model from EXIF:\\Samsung 382, Xiaomi 290,\\unknown 63};
+\node[box] (i2) at (4.9,-3.9) {20 symptoms,\\age and sex};
+\draw[arr] (d3.east) -- ++(0.45,0) |- (i1.west);
+\draw[arr] (d3.east) -- ++(0.45,0) |- (i2.west);
+% models
+\node[box] (m1) at (9.8,1.0) {Symptom models\\LR, LightGBM, MLP,\\modified McIsaac score};
+\node[box] (m2) at (9.8,-1.25) {Image models\\frozen DINOv2 / ConvNeXt\\with LR; fine-tuned CNNs};
+\node[box] (m3) at (9.8,-3.5) {Fusion\\late, early, stacking,\\gated fusion network};
+\node[base] (m4) at (9.8,-5.5) {Shortcut baselines\\phone only, image size,\\photo statistics};
+\draw[arr] (i2.east) -- ++(0.45,0) |- (m1.west);
+\draw[arr] (i2.east) -- ++(0.45,0) |- (m3.west);
+\draw[arr] (i1.east) -- ++(0.8,0) |- (m2.west);
+\draw[arr] (i1.east) -- ++(0.8,0) |- (m4.west);
+% evaluation
+\node[box] (e1) at (14.7,0.4) {5-fold $\times$ 5-repeat CV\\with nested inner CV;\\same folds for all models};
+\node[box] (e2) at (14.7,-1.95) {Shortcut tests\\phone identification,\\within-phone and\\cross-phone AUC};
+\node[box] (e3) at (14.7,-4.6) {Sensitivity and controls\\3 tie rules, ablations,\\shuffled images};
+\begin{scope}[on background layer]
+  \node[draw=gray!50, fill=gray!6, rounded corners=4pt, inner sep=7pt, fit=(m1)(m4)] (M) {};
+  \node[draw=gray!50, fill=gray!6, rounded corners=4pt, inner sep=7pt, fit=(e1)(e3)] (E) {};
+\end{scope}
+\draw[arr] (M.east) -- (E.west);
+\end{tikzpicture}}}
 \caption{Study design: 742 patients, 735 analysed; inputs (photograph, 20 symptoms, age, sex), model families, 5\,$\times$\,5 nested cross-validation and the shortcut analyses.}
 \label{fig:design}
 \end{figure}
