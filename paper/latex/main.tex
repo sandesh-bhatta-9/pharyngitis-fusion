@@ -347,7 +347,7 @@ Best symptom-only: AUC & 0.596 & 0.616 & 0.639 \\
 
 \subsection{Ablations}
 
-No component of the fusion network made a measurable difference (Fig.~\ref{fig:ablation}). With ConvNeXt features, the full gated model reached 0.684; replacing the gate by concatenation gave 0.686 ($p = 0.60$), FiLM 0.681, removing the auxiliary heads 0.682 and removing modality dropout 0.682. Training on hard instead of soft labels lowered AUC to 0.672 (difference 0.012, $p = 0.19$). Removing fever and cough did not hurt (0.690). The shuffled-image control fell to 0.529, below symptoms alone, confirming that the pipeline does not leak labels and that the fusion network relied almost entirely on the image branch.
+No component of the fusion network made a measurable difference (Fig.~\ref{fig:ablation}). With ConvNeXt features, the full gated model reached 0.684; replacing the gate by concatenation gave 0.686 ($p = 0.60$), FiLM 0.681, removing the auxiliary heads 0.682 and removing modality dropout 0.682. Training on hard instead of soft labels lowered AUC to 0.672 (difference 0.012, $p = 0.19$). Removing fever and cough did not hurt (0.690). The shuffled-image control fell to 0.529, below symptoms alone. The pipeline therefore does not leak labels, and the fusion network relied almost entirely on the image branch.
 
 \begin{figure}[!htbp]
 \centering
@@ -374,7 +374,7 @@ Brier scores ranged from 0.182 (phone only) to 0.218 (stacking). Class-balanced 
 
 \subsection{Explainability and subgroups}
 
-In the symptom model, cough, age, vomiting, myalgia and sore throat had the largest mean absolute SHAP values (Fig.~\ref{fig:shap}). The gate weighted the image at $g \approx 0.48$ on average (DINOv2) and slightly less when physicians disagreed (median 0.47 vs 0.50, Mann--Whitney $p < 0.001$; Fig.~\ref{fig:gate}). Grad-CAM maps (Fig.~\ref{fig:gradcam}) of the most confident bacterial cases highlighted white spots in close-up photographs, whereas the most confident non-bacterial cases were wide views of the oral cavity with the uvula and tongue visible, suggesting that framing and zoom, which may differ between sites, act as an additional cue. The image model discriminated better in children aged 14 or younger (AUC 0.77) than in adults aged 45 or older (0.64), and similarly in women (0.68) and men (0.72) (Fig.~\ref{fig:subgroups}).
+In the symptom model, cough, age, vomiting, myalgia and sore throat had the largest mean absolute SHAP values (Fig.~\ref{fig:shap}). The gate weighted the image at $g \approx 0.48$ on average (DINOv2) and slightly less when physicians disagreed (median 0.47 vs 0.50, Mann--Whitney $p < 0.001$; Fig.~\ref{fig:gate}). Grad-CAM maps (Fig.~\ref{fig:gradcam}) of the most confident bacterial cases highlighted white spots in close-up photographs, whereas the most confident non-bacterial cases were wide views of the oral cavity with the uvula and tongue visible. Framing and zoom, which may differ between sites, may therefore act as an additional cue. The image model discriminated better in children aged 14 or younger (AUC 0.77) than in adults aged 45 or older (0.64), and similarly in women (0.68) and men (0.72) (Fig.~\ref{fig:subgroups}).
 
 \begin{figure}[!htbp]
 \centering
@@ -437,7 +437,7 @@ No formal study protocol was published and the study was not registered; the ana
 PGUPharyngitis is publicly available under CC BY 4.0 at \url{https://doi.org/10.6084/m9.figshare.28163513}. Fold assignments and out-of-fold predictions are released with the code.
 
 \section*{Code availability}
-All code, configuration files, fold assignments and out-of-fold predictions are available at \url{https://github.com/sandesh-bhatta-9/pharyngitis-fusion} (archived at Zenodo, DOI to be added). Two scripts reproduce every table and figure.
+All code, configuration files, fold assignments and out-of-fold predictions are available at \url{https://github.com/sandesh-bhatta-9/pharyngitis-fusion} under the MIT licence. Two scripts reproduce every table and figure.
 
 \section*{Declaration of generative AI and AI-assisted technologies in the writing process}
 During the preparation of this work the author used Claude (Anthropic) to assist with code development, data analysis and drafting of the manuscript. After using this tool, the author reviewed and edited the content as needed and takes full responsibility for the content of the publication.

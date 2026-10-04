@@ -32,5 +32,5 @@ Figure 1 is drawn in TikZ inside `main.tex`; adding `figures/fig1_study_design.p
 checked against Crossref, Europe PMC, arXiv, the NeurIPS proceedings or JSTOR. Page numbers in the TRIPOD+AI checklist
 refer to the current `main.pdf`: update them if the text changes.
 
-Before submitting, make the GitHub repository public (the manuscript and cover letter say the code is publicly
-available) and add the Zenodo DOI to the Code availability section.
+The GitHub repository is public. To add a Zenodo DOI later (e.g. at revision), enable the repository at
+zenodo.org (GitHub login), create a GitHub release, and add the DOI to the Code availability section.
