@@ -23,5 +23,4 @@ Upload `paper/overleaf_upload.zip` (New Project → Upload Project). Overleaf in
 - Add `figures/fig1_study_design.pdf` (or `.png`, then change the extension in `main.tex`). Until then the PDF shows a
   "Missing file" box in place of Figure 1.
 - Check the references marked `VERIFY` in `references.bib`.
-- Replace `<username>` in the Code availability section with your GitHub username.
 - Elsevier asks for the highlights as a separate file at submission: copy the five `\item` lines from `main.tex`.

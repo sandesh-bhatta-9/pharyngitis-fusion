@@ -1,6 +1,6 @@
 # Device and site shortcuts in smartphone pharyngitis AI
 
-[![tests](../../actions/workflows/tests.yml/badge.svg)](../../actions/workflows/tests.yml)
+[![tests](https://github.com/sandesh-bhatta-9/pharyngitis-fusion/actions/workflows/tests.yml/badge.svg)](https://github.com/sandesh-bhatta-9/pharyngitis-fusion/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Data: CC BY 4.0](https://img.shields.io/badge/Data-CC%20BY%204.0-lightgrey.svg)](https://doi.org/10.6084/m9.figshare.28163513.v1)
 
@@ -41,7 +41,7 @@ Python 3.11. Tested on macOS with an Apple M5 (Metal backend); NVIDIA GPUs are u
 everything except fine-tuning also runs on a CPU.
 
 ```bash
-git clone https://github.com/<your-username>/pharyngitis-fusion.git
+git clone https://github.com/sandesh-bhatta-9/pharyngitis-fusion.git
 cd pharyngitis-fusion
 conda env create -f environment.yml      # or: python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 conda activate pharyngitis
