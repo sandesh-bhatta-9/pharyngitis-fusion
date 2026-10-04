@@ -3,6 +3,7 @@
 Models (name in results/oof/):
   sym_lr, sym_lgbm, sym_mlp        symptoms + age + gender only
   centor                           McIsaac/Centor score from the mapped items (no fitting)
+  phone                            reference: label prevalence of the photo's phone model (site shortcut)
   img_lr_<bb>                      logistic regression on frozen image embeddings (+ flip TTA)
   late_<bb>                        mean of sym_lr and img_lr_<bb> probabilities
   early_<bb>                       one logistic regression on [tabular, PCA(image)]
@@ -36,7 +37,7 @@ from .common import (TAG_SEP, add_config_arg, backbone_key, choose_threshold, in
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", message=".*did not converge.*")
 
-ALL = ["sym_lr", "sym_lgbm", "sym_mlp", "centor", "img_lr", "late", "early", "stack"]
+ALL = ["sym_lr", "sym_lgbm", "sym_mlp", "centor", "phone", "img_lr", "late", "early", "stack"]
 
 
 def lr(C=1.0):
@@ -123,6 +124,13 @@ def main():
                 sym[name] = (proba(model, X_tab[te]), inner)
                 if name in args.models:
                     add(name, oof_frame(df, te, r, k, sym[name][0], choose_threshold(y[tr], inner)))
+        if "phone" in args.models and "exif_phone" in df:
+            ph = df["exif_phone"].fillna("unknown").to_numpy()
+            rate = {v: y[tr][ph[tr] == v].mean() for v in np.unique(ph[tr])}
+            prior = y[tr].mean()
+            p_tr = np.array([rate.get(v, prior) for v in ph[tr]])
+            add("phone", oof_frame(df, te, r, k, np.array([rate.get(v, prior) for v in ph[te]]),
+                                   choose_threshold(y[tr], p_tr)))
         if "centor" in args.models:
             s = (c_score + 1) / 6.0  # McIsaac range -1..5 mapped to 0..1 (a rank score, not a probability)
             add("centor", oof_frame(df, te, r, k, s[te], choose_threshold(y[tr], s[tr])))

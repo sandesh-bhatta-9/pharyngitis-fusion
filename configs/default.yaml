@@ -3,8 +3,8 @@
 seed: 42
 
 paths:
-  raw_table: data/raw/PGUPharyngitis.xlsx   # the Excel file from Figshare (.xlsx or .csv)
-  raw_images: data/raw/images                # folder with one image per patient, named by patient ID
+  raw_table: data/raw/excel.xlsx            # from PGUPharyngitis.zip (Figshare 28163513)
+  raw_images: data/raw/data_image_pharyngitis_nature   # one folder per patient: <ID>/<ID>.jpg
   processed: data/processed
   features: data/features
   results: results
@@ -25,7 +25,13 @@ columns:
   meta: [city, phone]
   ignore: []
   # Majority-vote ties (e.g. 2 of 4): bacterial | nonbacterial | drop
+  # PGUPharyngitis: 100 of 741 patients are ties; prevalence is 27.7% (bacterial) vs 14.2% (nonbacterial).
+  # Pre-register the choice in paper/analysis_plan.md and run the other rules as sensitivity analyses.
   tie_rule: bacterial
+  # Patients removed before analysis, with the reason (kept in the audit report).
+  # Three pairs share an identical photo (pHash distance 0) but have different age/gender/symptoms,
+  # so the image cannot be assigned to either record: exclude both members of each pair.
+  exclude_ids: ["19", "23", "218", "256", "301", "305"]
 
 # Centor/McIsaac items -> symptom column names. Leave null if the item is not in the data.
 # PGUPharyngitis has fever (Pyrexia) and cough but no exudate or lymph-node items -> "modified" score.
@@ -39,7 +45,8 @@ cv:
   outer_folds: 5
   repeats: 5
   inner_folds: 3
-  stratify_meta: [city]
+  # The data has no city column; the phone model comes from EXIF (Xiaomi 44% vs Samsung 15% bacterial).
+  stratify_meta: [exif_phone]
 
 image:
   short_side: 256

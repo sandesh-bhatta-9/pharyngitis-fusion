@@ -1,7 +1,8 @@
 """E5 / E7 analyses that ask whether the photo adds information beyond the symptoms.
 
 Subcommands:
-  strata      AUC on unanimous vs. split-vote patients, and Spearman correlation with the vote share.
+  strata      AUC on unanimous vs. split-vote patients, AUC within each phone model (site shortcut check),
+              and Spearman correlation with the vote share.
   residual    Do image embeddings predict what the symptom model gets wrong? (permutation test)
   knockouts   Fusion minus symptom-only AUC for each symptom knock-out tag.
 
@@ -32,16 +33,28 @@ def auc_or_nan(y, p):
     return roc_auc_score(y, p) if 0 < y.sum() < len(y) else np.nan
 
 
+def within_group_auc(g, col):
+    """Size-weighted mean AUC inside each group (e.g. phone): removes between-site differences."""
+    parts = [(len(s), auc_or_nan(s['y'].to_numpy(), s['p'].to_numpy())) for _, s in g.groupby(col)]
+    parts = [(n, a) for n, a in parts if not np.isnan(a)]
+    return sum(n * a for n, a in parts) / sum(n for n, _ in parts) if parts else np.nan
+
+
 def strata(cfg, models):
+    df, _ = load_data(cfg)
+    phone = df.set_index('patient_id')['exif_phone'] if 'exif_phone' in df else None
     rows = []
     for m in models:
         oof = load_oof(cfg, m)
+        if phone is not None:
+            oof['phone'] = oof['patient_id'].map(phone)
         per = []
         for _, g in oof.groupby("repeat"):
             u = g["agreement"] == 1
             per.append({"auc_all": auc_or_nan(g["y"], g["p"]),
                         "auc_unanimous": auc_or_nan(g.loc[u, "y"], g.loc[u, "p"]),
                         "auc_split": auc_or_nan(g.loc[~u, "y"], g.loc[~u, "p"]),
+                        "auc_within_phone": within_group_auc(g, "phone") if phone is not None else np.nan,
                         "spearman_vote_share": spearmanr(g["p"], g["y_soft"]).statistic})
         per = pd.DataFrame(per)
         n_u = int((oof.groupby("patient_id")["agreement"].first() == 1).sum())

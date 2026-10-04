@@ -67,11 +67,24 @@ def parse_votes(raw, diag_cols, bacterial_values):
     return n_votes, n_bact, low
 
 
+def id_key(s) -> str:
+    """Normalise a patient ID for matching: trimmed, lower-case, no leading zeros ('001' == '1')."""
+    s = str(s).strip().lower()
+    return s.lstrip("0") or "0"
+
+
 def find_images(folder):
-    found = {}
-    for p in folder.rglob("*"):
+    found, clashes = {}, []
+    for p in sorted(folder.rglob("*")):
         if p.suffix.lower() in IMG_EXT and not p.name.startswith("."):
-            found.setdefault(p.stem.strip().lower(), p)
+            # Images in a per-patient subfolder are keyed by the folder name (3 PGUPharyngitis files are
+            # named by timestamp); images directly in the root folder are keyed by file name.
+            k = id_key(p.parent.name if p.parent != folder else p.stem)
+            if k in found:
+                clashes.append((found[k].name, p.name))
+            found.setdefault(k, p)
+    if clashes:
+        print(f"  warning: {len(clashes)} images share an ID after normalising, kept the first: {clashes[:5]}")
     return found
 
 
@@ -96,6 +109,10 @@ def main():
 
     raw = read_table(P["raw_table"])
     raw.columns = [str(c).strip() for c in raw.columns]
+    empty = [c for c in raw.columns if raw[c].isna().all()]
+    if empty:
+        print(f"Dropping empty columns: {empty}")
+        raw = raw.drop(columns=empty)
     if args.inspect:
         inspect(raw)
         return
@@ -139,7 +156,7 @@ def main():
     found = find_images(P["raw_images"])
     phones, sizes, paths = [], [], []
     for pid in df["patient_id"]:
-        src = found.get(pid.lower())
+        src = found.get(id_key(pid))
         if src is None:
             phones.append(""), sizes.append(""), paths.append("")
             continue
@@ -147,14 +164,17 @@ def main():
         model, wh = process_image(src, dst, cfg["image"]["short_side"])
         phones.append(model), sizes.append(f"{wh[0]}x{wh[1]}"), paths.append(str(dst.relative_to(P["processed"])))
     df["exif_phone"], df["orig_size"], df["image"] = phones, sizes, paths
+    df["exif_phone"] = df["exif_phone"].replace("", "unknown")
 
     # ---- exclusions
     n0 = len(df)
     no_img = df["image"] == ""
     no_vote = df["n_votes"] == 0
     dup_id = df["patient_id"].duplicated(keep=False)
-    drop = no_img | no_vote | dup_id | ((df["tie"] == 1) & (tie_rule == "drop"))
-    ids_set = set(df["patient_id"].str.lower())
+    excl_ids = {id_key(i) for i in C.get("exclude_ids", [])}
+    excluded = df["patient_id"].map(id_key).isin(excl_ids)
+    drop = no_img | no_vote | dup_id | excluded | ((df["tie"] == 1) & (tie_rule == "drop"))
+    ids_set = {id_key(i) for i in df["patient_id"]}
     orphan_imgs = sorted(k for k in found if k not in ids_set)
     clean = df[~drop].reset_index(drop=True)
     clean["y"] = clean["y"].astype(int)
@@ -172,7 +192,7 @@ def main():
         report.append("_imagehash not installed: duplicate check skipped._")
 
     # ---- write outputs
-    use_meta = meta + (["exif_phone"] if clean["exif_phone"].ne("").any() else [])
+    use_meta = meta + (["exif_phone"] if clean["exif_phone"].ne("unknown").any() else [])
     cols = {"symptoms": symptoms, "binary": symptoms + ["gender"], "meta": use_meta, "diagnosis_columns": diag_cols}
     clean.to_csv(P["processed"] / "clean.csv", index=False)
     (P["processed"] / "columns.json").write_text(json.dumps(cols, indent=2, ensure_ascii=False))
@@ -180,13 +200,14 @@ def main():
     pos = int(clean["y"].sum())
     report += [
         f"- Rows in table: {n0}; kept: {len(clean)}",
-        f"- Dropped: no image {int(no_img.sum())}, no votes {int(no_vote.sum())}, duplicate IDs {int(dup_id.sum())}",
+        f"- Dropped: no image {int(no_img.sum())} {list(df.loc[no_img, 'patient_id'])}, no votes {int(no_vote.sum())}, "
+        f"duplicate IDs {int(dup_id.sum())}, excluded by config {int(excluded.sum())} {list(df.loc[excluded, 'patient_id'])}",
         f"- Images without a table row: {len(orphan_imgs)} {orphan_imgs[:10]}",
         f"- Diagnosis columns: {diag_cols}",
         f"- Bacterial (majority vote): {pos} ({pos / len(clean):.1%}); non-bacterial: {len(clean) - pos}",
         f"- Ties (vote share exactly 0.5): {int(clean['tie'].sum())}, rule = {tie_rule}",
         f"- Unanimous cases: {int((clean['agreement'] == 1).sum())}",
-        f"- Meta columns found: {meta or 'none'}; EXIF phone models: {sorted(set(clean['exif_phone']) - {''}) or 'none'}",
+        f"- Meta columns found: {meta or 'none'}; EXIF phone models: {clean['exif_phone'].value_counts().to_dict()}",
         f"- Near-duplicate image pairs (pHash distance <= 5): {len(dups)} {dups[:10]}",
         "", "## Diagnosis values (check that bacterial_values is right)", "",
         "| value | count |", "| --- | --- |",
