@@ -1,0 +1,65 @@
+# Smoke-test config: fake data from src.make_synthetic, small grids, fast runs.
+seed: 42
+
+paths:
+  raw_table: data_synthetic/raw/synthetic.xlsx
+  raw_images: data_synthetic/raw/images
+  processed: data_synthetic/processed
+  features: data_synthetic/features
+  results: data_synthetic/results
+  figures: data_synthetic/figures
+
+columns:
+  id: patient_ID
+  age: age
+  gender: gender
+  diagnosis_regex: "^(diagnosis|diag|doctor|physician|dr)[ _-]?\\d+"
+  bacterial_values: ["bacterial"]
+  symptoms: auto
+  meta: [city, phone]
+  ignore: []
+  tie_rule: bacterial
+
+centor:
+  fever: fever
+  cough: cough
+  exudate: tonsillar_exudate
+  nodes: cervical_lymphadenopathy
+
+cv:
+  outer_folds: 5
+  repeats: 2
+  inner_folds: 3
+  stratify_meta: [city]
+
+image:
+  short_side: 256
+  crop: 224
+
+features:
+  backbones: [resnet18]
+  n_aug: 3
+  batch_size: 32
+
+fusion:
+  proj_dim: 64
+  epochs_max: 15
+  batch_size: 32
+  weight_decay: 1.0e-4
+  modality_dropout: 0.2
+  grid:
+    lr: [1.0e-3]
+    dropout: [0.3]
+    aux_weight: [0.0, 0.3]
+
+finetune:
+  models: [resnet18]
+  epochs: 3
+  patience: 2
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  batch_size: 16
+  val_frac: 0.15
+
+hypotheses:
+  proposed: gated_resnet18

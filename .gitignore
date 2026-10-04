@@ -1,0 +1,12 @@
+# Data stays out of git (licence + size). folds.csv is the exception: commit it for reproducibility.
+data/raw/
+data/processed/*
+!data/processed/folds.csv
+data/features/
+data_synthetic/
+results/models/
+*.pt
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+.vscode/

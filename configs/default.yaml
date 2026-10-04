@@ -1,0 +1,76 @@
+# Main config for the real PGUPharyngitis data.
+# Paths are relative to the project root.
+seed: 42
+
+paths:
+  raw_table: data/raw/PGUPharyngitis.xlsx   # the Excel file from Figshare (.xlsx or .csv)
+  raw_images: data/raw/images                # folder with one image per patient, named by patient ID
+  processed: data/processed
+  features: data/features
+  results: results
+  figures: figures
+
+# Column mapping. Run `python -m src.prepare_data --inspect` first and fix these names.
+columns:
+  id: patient_ID
+  age: age
+  gender: gender
+  # Columns that hold the physicians' diagnoses (matched case-insensitively).
+  diagnosis_regex: "^(diagnosis|diag|doctor|physician|dr)[ _-]?\\d+"
+  # Cell values that count as a "bacterial" vote. Every other non-empty value counts as non-bacterial.
+  bacterial_values: ["bacterial", "bacteria", "b", "1", "yes"]
+  # "auto" = every column that is not id/age/gender/diagnosis/meta/ignore. Or give an explicit list.
+  symptoms: auto
+  # Site / device columns: used only for stratification and subgroup analysis, never as model inputs.
+  meta: [city, phone]
+  ignore: []
+  # Majority-vote ties (e.g. 2 of 4): bacterial | nonbacterial | drop
+  tie_rule: bacterial
+
+# Centor/McIsaac items -> symptom column names. Leave null if the item is not in the data.
+centor:
+  fever: null
+  cough: null
+  exudate: null
+  nodes: null
+
+cv:
+  outer_folds: 5
+  repeats: 5
+  inner_folds: 3
+  stratify_meta: [city]
+
+image:
+  short_side: 256
+  crop: 224
+
+features:
+  backbones:
+    - convnext_tiny.fb_in22k_ft_in1k
+    - vit_small_patch14_dinov2.lvd142m
+  n_aug: 10
+  batch_size: 32
+
+fusion:
+  proj_dim: 128
+  epochs_max: 60
+  batch_size: 32
+  weight_decay: 1.0e-4
+  modality_dropout: 0.2
+  grid:
+    lr: [1.0e-3, 3.0e-4]
+    dropout: [0.3, 0.5]
+    aux_weight: [0.0, 0.3]
+
+finetune:
+  models: [densenet121, mobilenetv3_large_100, convnext_tiny.fb_in22k_ft_in1k]
+  epochs: 30
+  patience: 7
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  batch_size: 16
+  val_frac: 0.15
+
+# Model names used for the pre-registered hypotheses (filled in after E1/E2 smoke runs).
+hypotheses:
+  proposed: gated_convnext_tiny
