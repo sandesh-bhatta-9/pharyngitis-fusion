@@ -11,6 +11,7 @@ echo "#### 1. Phone/site shortcut"
 step python -m src.site_shortcut size
 step python -m src.site_shortcut within
 step python -m src.site_shortcut cross
+step python -m src.site_shortcut lowlevel
 step python -m src.site_shortcut largeimg --models "img_lr_$DINO" "img_lr_$CNX" "stack_$DINO" "gated_$DINO" "gated_$CNX" phone sym_lgbm
 
 echo "#### 2. Tie-rule sensitivity"
@@ -41,9 +42,10 @@ cp results/metrics/hypotheses.csv results/metrics/hypotheses_convnext.csv
 step python -m src.stats --pair "img_lr_$DINO" phone --pair "img_lr_$CNX" phone --pair "stack_$DINO" "img_lr_$DINO" \
   --pair "gated_$CNX" "gated_${CNX}__hard" --pair "gated_$CNX" "concat_$CNX" --pair "img_lr_$DINO" size \
   --pair ft_densenet121 phone --pair ft_convnext_tiny phone
-step python -m src.label_dependence strata --models phone size sym_lgbm "img_lr_$CNX" "img_lr_$DINO" "stack_$DINO" \
+step python -m src.label_dependence strata --models phone size lowlevel sym_lgbm "img_lr_$CNX" "img_lr_$DINO" "stack_$DINO" \
   "gated_$CNX" "gated_$DINO" "gated_${CNX}__shuffled" ft_densenet121 ft_mobilenetv3_large_100 ft_convnext_tiny
 step python -m src.figures roc --models "stack_$DINO" "img_lr_$DINO" phone sym_lgbm \
   --labels "Stacked fusion (DINOv2)" "Image only (DINOv2)" "Phone model only" "Symptoms (LightGBM)"
 step python -m src.figures subgroups --model "img_lr_$DINO"
+step python -m src.figures shortcut
 echo "#### ALL DONE $(date +%H:%M)"

@@ -10,6 +10,8 @@ Subcommands:
   within    models trained AND tested inside one phone (5-fold x 5-repeat CV within each phone).
   cross     train on all patients of one phone, test on the other phone (both directions).
   largeimg  within-phone AUC of saved models restricted to images with original short side >= --min-side px.
+  lowlevel  "low-level" baseline: colour, brightness, darkness and edge statistics of each photo (no deep features);
+            label AUC overall and within phone, and how well these statistics identify the phone.
 
 Usage:
     python -m src.site_shortcut size
@@ -140,6 +142,48 @@ def cmd_cross(cfg, backbones, n_boot):
     return pd.DataFrame(rows)
 
 
+def lowlevel_features(cfg, df):
+    """Global photo statistics that capture lighting, colour cast, zoom/framing (dark cavity share) and sharpness."""
+    from PIL import Image, ImageFilter
+    rows = []
+    for path in df["image"]:
+        im = Image.open(cfg["paths"]["processed"] / path).convert("RGB")
+        a = np.asarray(im, dtype=np.float32) / 255.0
+        hsv = np.asarray(im.convert("HSV"), dtype=np.float32) / 255.0
+        grey = a.mean(axis=2)
+        edges = np.asarray(im.convert("L").filter(ImageFilter.FIND_EDGES), dtype=np.float32) / 255.0
+        r, g, b = a[..., 0], a[..., 1], a[..., 2]
+        rows.append([*a.reshape(-1, 3).mean(0), *a.reshape(-1, 3).std(0), *hsv.reshape(-1, 3).mean(0),
+                     *hsv.reshape(-1, 3).std(0), (grey < 0.15).mean(), (grey > 0.85).mean(),
+                     ((r - g) > 0.25).mean(), edges.mean(), (edges > 0.2).mean()])
+    return np.array(rows)
+
+
+def cmd_lowlevel(cfg):
+    df, _ = load_data(cfg)
+    y = df["y"].to_numpy()
+    X = lowlevel_features(cfg, df)
+    make = lambda: GridSearchCV(Pipeline([("sc", StandardScaler()), ("clf", lr())]),  # noqa: E731
+                                {"clf__C": [0.01, 0.1, 1, 10]}, scoring="roc_auc", cv=3)
+    frames = []
+    for r, k, tr, te in outer_splits(cfg, df):
+        m = make().fit(X[tr], y[tr])
+        inner = cross_val_predict(m.best_estimator_, X[tr], y[tr], cv=3, method="predict_proba")[:, 1]
+        frames.append(oof_frame(df, te, r, k, m.predict_proba(X[te])[:, 1], choose_threshold(y[tr], inner)))
+    print("Label from low-level photo statistics:")
+    save_oof(cfg, "lowlevel", frames)
+    known = df["exif_phone"].isin(PHONES).to_numpy()
+    is_xiaomi = (df["exif_phone"] == "2201117SG").to_numpy()[known]
+    p = cross_val_predict(make(), X[known], is_xiaomi, cv=StratifiedKFold(5, shuffle=True, random_state=cfg["seed"]),
+                          method="predict_proba")[:, 1]
+    rows = [{"analysis": "identify phone (Xiaomi vs Samsung)", "auc": roc_auc_score(is_xiaomi, p), "n": int(known.sum())}]
+    for code, name in PHONES.items():
+        msk = (df["exif_phone"] == code).to_numpy()
+        mu, sd = cv_within(X[msk], y[msk], make, cfg["seed"])
+        rows.append({"analysis": f"label, trained and tested within {name}", "auc": mu, "auc_sd": sd, "n": int(msk.sum())})
+    return pd.DataFrame(rows)
+
+
 def cmd_largeimg(cfg, models, min_side):
     df, _ = load_data(cfg)
     wh = df["orig_size"].str.split("x", expand=True).astype(float)
@@ -166,6 +210,7 @@ def main():
         s.add_argument("--backbones", nargs="*", help="default: config features.backbones")
         if name == "cross":
             s.add_argument("--n-boot", type=int, default=1000)
+    sub.add_parser("lowlevel")
     s = sub.add_parser("largeimg")
     s.add_argument("--models", nargs="+", required=True)
     s.add_argument("--min-side", type=int, default=500)
@@ -180,6 +225,8 @@ def main():
         res = cmd_within(cfg, bbs)
     elif args.cmd == "cross":
         res = cmd_cross(cfg, bbs, args.n_boot)
+    elif args.cmd == "lowlevel":
+        res = cmd_lowlevel(cfg)
     else:
         res = cmd_largeimg(cfg, args.models, args.min_side)
     path = out / f"site_{args.cmd}.csv"

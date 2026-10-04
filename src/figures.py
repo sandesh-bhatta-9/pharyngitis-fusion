@@ -6,6 +6,7 @@ Subcommands:
   dca          decision curves: net benefit vs. treat-all and treat-none (<= 4 models)
   ablation     AUC with 95% CI per model, as a dot plot (E3)
   subgroups    forest plot of AUC by subgroup for one model (E4)
+  shortcut     paper Figure 3: AUC overall vs within phone (A) and cross-phone transfer (B)
 
 Usage:
     python -m src.figures roc --models gated_convnext_tiny sym_lgbm img_lr_convnext_tiny
@@ -165,10 +166,70 @@ def fig_subgroups(cfg, model, out, n_boot=500):
     print(res.round(3).to_string(index=False))
 
 
+SHORTCUT_MODELS = [  # (oof name, label), ordered for the figure
+    ("stack_vit_small_patch14_dinov2", "Stacked fusion (DINOv2)"),
+    ("img_lr_vit_small_patch14_dinov2", "Image, frozen DINOv2"),
+    ("ft_convnext_tiny", "Image, fine-tuned ConvNeXt"),
+    ("ft_densenet121", "Image, fine-tuned DenseNet121"),
+    ("phone", "Phone only"),
+    ("lowlevel", "Photo statistics"),
+    ("sym_lgbm", "Symptoms (LightGBM)"),
+]
+
+
+def fig_shortcut(cfg, out):
+    """Panel A: pooled AUC vs within-phone AUC per model. Panel B: train on one phone, test on the other."""
+    m = cfg["paths"]["metrics"]
+    summ = pd.read_csv(m / "summary.csv").set_index("model")
+    strata = pd.read_csv(m / "label_dependence_strata.csv").set_index("model")
+    cross = pd.read_csv(m / "site_cross.csv")
+    rows = [(lab, summ.loc[k, "auc"], strata.loc[k, "auc_within_phone"]) for k, lab in SHORTCUT_MODELS
+            if k in summ.index and k in strata.index]
+    fig, (a, b) = plt.subplots(1, 2, figsize=(7.4, 3.3), gridspec_kw={"width_ratios": [1.35, 1]})
+    ys = np.arange(len(rows))[::-1]
+    for y_, (lab, tot, wit) in zip(ys, rows):
+        a.plot([wit, tot], [y_, y_], color=GRID, lw=2.2, zorder=1)
+        a.scatter(tot, y_, color=SERIES[0], s=34, zorder=3, label="Overall" if y_ == ys[0] else None)
+        a.scatter(wit, y_, color=SERIES[1], s=34, zorder=3, label="Within phone" if y_ == ys[0] else None)
+    a.axvline(0.5, color=REF, ls="--", lw=1)
+    a.set_yticks(ys, [r[0] for r in rows], color=INK)
+    a.grid(axis="y", visible=False)
+    a.set_xlim(0.45, 0.75)
+    a.set_xlabel("AUC")
+    a.set_title("A  Performance overall and within one phone", loc="left", fontsize=8.5)
+    a.legend(loc="lower right", fontsize=7)
+
+    names = {"symptoms (LR)": "Symptoms", "image vit_small_patch14_dinov2 (LR)": "Image DINOv2",
+             "image convnext_tiny (LR)": "Image ConvNeXt"}
+    cross = cross[cross["model"].isin(names)]
+    groups = [("Samsung S21 Ultra", "Xiaomi"), ("Xiaomi", "Samsung S21 Ultra")]
+    width = 0.26
+    for gi, (tr, te) in enumerate(groups):
+        sub = cross[(cross["train_phone"] == tr) & (cross["test_phone"] == te)].set_index("model")
+        for mi, (key, lab) in enumerate(names.items()):
+            if key not in sub.index:
+                continue
+            r = sub.loc[key]
+            x = gi + (mi - 1) * width
+            b.errorbar(x, r["auc"], yerr=[[r["auc"] - r["auc_lo"]], [r["auc_hi"] - r["auc"]]], fmt="o",
+                       color=(SERIES[2], SERIES[3], MUTED)[mi], ms=5, elinewidth=1.4, capsize=0,
+                       label=lab if gi == 0 else None)
+    b.axhline(0.5, color=REF, ls="--", lw=1)
+    b.set_xticks([0, 1], ["Train Samsung\ntest Xiaomi", "Train Xiaomi\ntest Samsung"], color=INK)
+    b.set_xlim(-0.6, 1.6)
+    b.set_ylim(0.3, 0.75)
+    b.grid(axis="x", visible=False)
+    b.set_ylabel("AUC (95% CI)")
+    b.set_title("B  Train on one phone, test on the other", loc="left", fontsize=8.5)
+    b.legend(fontsize=7, loc="upper right")
+    fig.tight_layout()
+    save(fig, out, "fig3_site_shortcut")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     add_config_arg(ap)
-    ap.add_argument("kind", choices=["roc", "calibration", "dca", "ablation", "subgroups"])
+    ap.add_argument("kind", choices=["roc", "calibration", "dca", "ablation", "subgroups", "shortcut"])
     ap.add_argument("--models", nargs="*", default=[])
     ap.add_argument("--model", help="for subgroups")
     ap.add_argument("--labels", nargs="*", default=[], help="display names, same order as --models")
@@ -178,7 +239,9 @@ def main():
     cfg["paths"]["metrics"].mkdir(parents=True, exist_ok=True)
     labels = dict(zip(args.models, args.labels))
     style()
-    if args.kind == "subgroups":
+    if args.kind == "shortcut":
+        fig_shortcut(cfg, out)
+    elif args.kind == "subgroups":
         fig_subgroups(cfg, args.model or args.models[0], out)
     else:
         if not args.models:

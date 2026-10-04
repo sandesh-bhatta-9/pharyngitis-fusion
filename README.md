@@ -50,7 +50,7 @@ python -m src.make_folds
 
 ## 4. Run the experiments
 
-Either `bash scripts/run_all.sh` (everything, several hours) or step by step:
+Run `bash scripts/run_all.sh` (main experiments), then `bash scripts/run_extra.sh` (site-shortcut experiments, tie-rule sensitivity, fine-tuning on one repeat, final metrics and paper figures). Together they reproduce every number and figure in the paper, in about 3 hours on an M-series MacBook. Or step by step:
 
 | Step | Command | Output | Plan |
 | --- | --- | --- | --- |
@@ -66,6 +66,8 @@ Either `bash scripts/run_all.sh` (everything, several hours) or step by step:
 | Label dependence | `python -m src.label_dependence strata/residual/knockouts …` | `label_dependence_*.csv` | E5, E7 |
 | Explainability | `python -m src.explain shap/gate/gradcam …` | `figures/` | E6 |
 | Figures | `python -m src.figures roc/calibration/dca/ablation/subgroups …` | `figures/` | paper |
+| Site shortcut | `python -m src.site_shortcut size/within/cross/lowlevel/largeimg` | `results/metrics/site_*.csv` | shortcut |
+| Tie-rule sensitivity | any script with `--config configs/tie_nonbacterial.yaml` or `tie_drop.yaml` | `results/tie_*/` | sensitivity |
 
 Every script explains its options with `--help`. To look at results quickly, add `--repeats 1` to the
 training scripts (5 folds instead of 25).
@@ -75,7 +77,7 @@ training scripts (5 folds instead of 25).
 - **Splits:** stratified on label × city; `folds.csv` is shared by every model.
 - **Nested CV:** hyperparameters, epoch count and the decision threshold are chosen on 3-fold inner CV inside
   each outer training part. Imputers and scalers are fitted on training data only.
-- **Fine-tuning exception (E1):** a stratified 15% validation split replaces inner CV for cost reasons.
+- **Fine-tuning exception (E1):** one repeat (5 folds); a stratified 15% validation split replaces inner CV for cost reasons.
 - **Threshold:** maximises balanced accuracy on inner out-of-fold predictions.
 - **Image features:** frozen backbones, embeddings cached for the centre crop, a horizontal flip (TTA) and
   10 random training augmentations (a new one is sampled each epoch).
@@ -83,7 +85,11 @@ training scripts (5 folds instead of 25).
   image-only and symptom-only heads (λ ∈ {0, 0.3}); modality dropout 0.2; soft-label BCE weighted by class.
 - **Statistics:** Nadeau–Bengio corrected resampled t-test on fold AUCs (primary), DeLong per repeat,
   Holm correction across H1–H3, patient-level bootstrap CIs.
-- **Reporting:** AUC is reported both pooled per repeat and as the mean of fold AUCs.
+- **Reporting:** AUC is reported both pooled per repeat and as the mean of fold AUCs, plus the AUC within each phone model.
+- **Site shortcut:** the phone model is read from EXIF (no city column exists); phone-only, image-size and photo-statistics
+  baselines, phone identification, within-phone and cross-phone evaluation (`src/site_shortcut.py`).
+- **Labels:** majority vote, ties = bacterial; ties = non-bacterial and ties dropped as sensitivity analyses.
+- **Exclusions:** patient 666 (no image) and three pairs sharing an identical photo (19/23, 218/256, 301/305).
 
 ## Layout
 
