@@ -1,0 +1,7 @@
+Highlights
+
+- First multimodal benchmark on PGUPharyngitis: images, 20 symptoms, age and sex.
+- Phone model alone predicts expert labels (AUC 0.67), beating the published baseline.
+- Image features identify the phone (AUC 0.99) but fail across phones (AUC ≈ 0.5).
+- Within one phone, image AUC falls to 0.50–0.58; 18 colour statistics match deep nets.
+- Symptom fusion adds nothing over images; benchmarks need site-aware evaluation.

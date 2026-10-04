@@ -18,9 +18,19 @@ In VS Code, the *LaTeX Workshop* extension shows the PDF next to the source.
 
 Upload `paper/overleaf_upload.zip` (New Project → Upload Project). Overleaf includes the `elsarticle` class.
 
-## Before submission
+## Submission files
 
-- Add `figures/fig1_study_design.pdf` (or `.png`, then change the extension in `main.tex`). Until then the PDF shows a
-  "Missing file" box in place of Figure 1.
-- Check the references marked `VERIFY` in `references.bib`.
-- Elsevier asks for the highlights as a separate file at submission: copy the five `\item` lines from `main.tex`.
+| File | Upload as |
+| --- | --- |
+| `main.tex`, `references.bib`, `figures/` (or `main.pdf`) | Manuscript (LaTeX source) |
+| `highlights.docx` (`highlights.txt` is the same text) | Highlights |
+| `figures/graphical_abstract.png` | Graphical abstract |
+| `cover_letter.pdf` | Cover letter |
+| `tripod_ai_checklist.pdf` | Supplementary file (reporting checklist) |
+
+Figure 1 is drawn in TikZ inside `main.tex`; adding `figures/fig1_study_design.pdf` replaces it. All references were
+checked against Crossref, Europe PMC, arXiv, the NeurIPS proceedings or JSTOR. Page numbers in the TRIPOD+AI checklist
+refer to the current `main.pdf`: update them if the text changes.
+
+Before submitting, make the GitHub repository public (the manuscript and cover letter say the code is publicly
+available) and add the Zenodo DOI to the Code availability section.

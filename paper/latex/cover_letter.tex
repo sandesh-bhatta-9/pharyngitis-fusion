@@ -1,0 +1,31 @@
+\documentclass[11pt]{letter}
+\usepackage[a4paper,margin=2cm,top=1.6cm,bottom=1.6cm]{geometry}
+\usepackage[hidelinks]{hyperref}
+\signature{Sandesh Bhatta\\
+Department of Computer Science\\
+University at Albany, State University of New York\\
+Albany, New York, USA\\
+\href{mailto:sbhatta@albany.edu}{sbhatta@albany.edu} \textperiodcentered{} ORCID \href{https://orcid.org/0009-0008-0399-0480}{0009-0008-0399-0480}}
+\address{}
+\begin{document}
+\begin{letter}{The Editor-in-Chief\\
+\textit{Computers in Biology and Medicine}}
+\opening{Dear Editor,}
+
+I am submitting the manuscript ``Device and site shortcuts dominate smartphone throat-image classification of bacterial pharyngitis: a multimodal benchmark on PGUPharyngitis'' for consideration as a full-length article in \textit{Computers in Biology and Medicine}.
+
+Smartphone photographs of the throat are being studied as a way to reduce unnecessary antibiotic prescribing for sore throat, and the journal has published work in this area (Yoo et al., 2020). PGUPharyngitis, released in \textit{Scientific Data} in 2025, is the largest public dataset of such photographs, with 742 patients from two cities, two phone models and labels from four to nine physicians per patient. Its published image-only models reach an AUC of 0.645.
+
+I set out to add the recorded symptoms to the images and found that most of the image performance comes from recognising which phone, and therefore which city, took the photograph. Bacterial prevalence was 44\% on one phone and 15\% on the other. Knowing only the phone predicts the physicians' label with an AUC of 0.67, and 18 simple colour statistics reach 0.646, matching the published deep-learning baseline. Image features identify the phone with an AUC of 0.99. Within a single phone, image AUC falls to about 0.59, and models trained on one phone score 0.50--0.53 on the other. Fusing symptoms with images, including through a gated fusion network, never improves on the image alone.
+
+The manuscript contributes the first multimodal benchmark on this dataset, compared under one repeated, nested cross-validation protocol with corrected statistical tests, and a set of shortcut analyses that other smartphone-imaging studies can reuse. The code, fold assignments and out-of-fold predictions are publicly available, so future work on PGUPharyngitis can be compared directly. The study is reported following TRIPOD+AI, and the completed checklist is included.
+
+I believe the findings will interest readers working on medical image analysis and clinical decision support, because the same site confounding can affect any dataset collected with different devices at different sites.
+
+I confirm that this manuscript is original, has not been published, and is not under consideration elsewhere. I am the sole author. The study received no specific funding and I have no competing interests. It uses only the anonymised public dataset, whose collection was approved by a research ethics committee with informed consent. The use of AI-assisted tools is declared in the manuscript.
+
+Thank you for considering this submission.
+
+\closing{Yours sincerely,}
+\end{letter}
+\end{document}
