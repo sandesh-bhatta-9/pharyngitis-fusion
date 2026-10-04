@@ -1,0 +1,430 @@
+%% Manuscript for Computers in Biology and Medicine (Elsevier), elsarticle class.
+%% Compile: tectonic main.tex   (or pdflatex + bibtex + pdflatex x2, or upload the folder to Overleaf)
+\documentclass[preprint,12pt]{elsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{lineno}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\figfile}[2]{\IfFileExists{#1}{\includegraphics[width=#2]{#1}}{\fbox{\parbox{0.8\linewidth}{\centering\vspace{2cm}Missing file: \texttt{\detokenize{#1}}\vspace{2cm}}}}}
+
+\journal{Computers in Biology and Medicine}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Device and site shortcuts dominate smartphone throat-image classification of bacterial pharyngitis: a multimodal benchmark on PGUPharyngitis}
+
+\author[a]{Sandesh Bhatta\corref{cor1}}
+\ead{sbhatta@albany.edu}
+\ead[url]{https://orcid.org/0009-0008-0399-0480}
+\cortext[cor1]{Corresponding author.}
+
+\affiliation[a]{organization={Department of Computer Science, University at Albany, State University of New York},
+            city={Albany},
+            state={New York},
+            country={USA}}
+
+\begin{abstract}
+\textit{Background:} Smartphone throat photographs could help separate bacterial from non-bacterial pharyngitis. The public PGUPharyngitis dataset (742 patients, two cities, two phones) reports image-only AUCs up to 0.645, but no study has added symptoms or checked what the models learn.
+
+\textit{Methods:} We analysed 735 patients labelled by majority vote of 4--9 physicians, using 5-fold cross-validation repeated five times with nested tuning. We compared symptom models, frozen and fine-tuned image networks, standard fusion and a gated fusion network. We then tested for device shortcuts with phone-only and photo-statistics baselines, phone identification, within-phone and cross-phone evaluation, and three rules for tied votes.
+
+\textit{Results:} Stacked image--symptom fusion reached an AUC of 0.703 (95\% CI 0.66--0.74), images alone 0.700 and symptoms alone 0.596. Knowing only the phone gave 0.673, and 18 colour statistics gave 0.646, matching the published baseline. Image features identified the phone with an AUC of 0.99. Within one phone, image AUC fell to 0.59, and models trained on one phone scored 0.50--0.53 on the other. Fusion beat symptoms under one of three tie rules and never beat images alone.
+
+\textit{Conclusions:} Most of the apparent performance on PGUPharyngitis comes from recognising the phone and site that took the photograph, not the throat. Smartphone pharyngitis models need within-site and cross-site evaluation before any clinical use.
+\end{abstract}
+
+\begin{graphicalabstract}
+\figfile{figures/graphical_abstract.png}{\textwidth}
+\end{graphicalabstract}
+
+\begin{highlights}
+\item First multimodal benchmark on PGUPharyngitis: images, 20 symptoms, age and sex.
+\item Phone model alone predicts expert labels (AUC 0.67), beating the published baseline.
+\item Image features identify the phone (AUC 0.99) but fail across phones (AUC $\approx$ 0.5).
+\item Within one phone, image AUC falls to 0.50--0.58; 18 colour statistics match deep nets.
+\item Symptom fusion adds nothing over images; benchmarks need site-aware evaluation.
+\end{highlights}
+
+\begin{keyword}
+pharyngitis \sep smartphone imaging \sep shortcut learning \sep multimodal fusion \sep deep learning \sep antibiotic stewardship
+\end{keyword}
+
+\end{frontmatter}
+
+\linenumbers
+
+%% ---------------------------------------------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+
+Sore throat is one of the most common reasons for primary-care visits, and most cases are viral. Group A streptococcus and other bacteria cause a minority of cases, yet antibiotics are prescribed far more often than bacterial infection occurs \cite{shulman2012idsa,spinks2021cochrane}. Clinical scores such as Centor and McIsaac combine fever, tonsillar exudate, tender cervical lymph nodes, absence of cough and age to estimate the probability of streptococcal infection \cite{centor1981,mcisaac1998}. They are simple and widely taught, but their discrimination is moderate and they depend on a careful physical examination.
+
+Smartphone photographs of the throat are a cheap alternative that also works remotely. Deep-learning models trained on such photographs have detected severe pharyngitis \cite{yoo2020pharyngitis} and streptococcal pharyngitis \cite{askarian2019strep} in small single-site studies. In 2025, Shojaei et al.\ released PGUPharyngitis, the largest public dataset of its kind: 742 throat photographs from patients with cold symptoms in two Iranian cities, taken with two phone models, each labelled bacterial or non-bacterial by four to nine physicians, together with 20 symptoms, age and sex \cite{shojaei2025pgu}. Their image-only baselines reached an AUC of 0.645 (DenseNet121), and the dataset was offered to support AI-based diagnosis and remote care.
+
+Two questions remain open. First, the dataset records symptoms, and physicians labelled each case from the photograph and the symptoms together, yet no published model combines the two. Multimodal fusion of images with clinical variables often improves medical prediction \cite{huang2020fusion}, so fusion is worth testing here. Second, nobody has checked what image models learn on this dataset. Deep networks readily exploit ``shortcuts'': features that predict the label in the training data but are unrelated to the disease \cite{geirhos2020shortcut}. In chest radiography, models identified the hospital and scanner and used them to predict pneumonia or COVID-19 \cite{zech2018pneumonia,degrave2021covid}, and hip-fracture models leaned on scanner and patient variables \cite{badgeley2019hip}. In PGUPharyngitis, each city used a different phone, and bacterial prevalence may differ between cities. A model could therefore score well by recognising the phone.
+
+We set out to build a symptom-aware image model and, in doing so, to test for device and site shortcuts. Our contributions are:
+\begin{enumerate}
+\item The first multimodal benchmark on PGUPharyngitis, comparing symptom-only, image-only, clinical-score and five fusion approaches, including a gated cross-modal fusion network, under one repeated, nested cross-validation protocol with public folds.
+\item A shortcut analysis showing that the phone alone, or 18 global colour statistics, match the published image baseline; that image features identify the phone almost perfectly; and that image performance largely disappears within a phone and across phones.
+\item Ablation, label-dependence and tie-rule sensitivity analyses showing which conclusions hold under different analysis choices and which do not.
+\item Open code, fold assignments and out-of-fold predictions to make future work on this dataset comparable.
+\end{enumerate}
+
+%% ---------------------------------------------------------------------------------------------
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Clinical scores} The Centor score assigns one point each for fever, tonsillar exudate, tender anterior cervical lymphadenopathy and absence of cough \cite{centor1981}; McIsaac added an age adjustment \cite{mcisaac1998}. Both are used to decide on testing or empirical antibiotics, and both need findings from a physical examination. PGUPharyngitis records fever and cough but not exudate or lymph nodes, so only a modified score can be computed.
+
+\paragraph{Throat-image AI} Yoo et al.\ trained convolutional networks on smartphone throat photographs to separate severe pharyngitis from normal throats \cite{yoo2020pharyngitis}, and Askarian et al.\ used colour and texture features from smartphone images to detect streptococcal pharyngitis \cite{askarian2019strep}. These studies were small and from single sites. Shojaei et al.\ released PGUPharyngitis with image-only baselines evaluated by three-fold cross-validation, reporting AUCs from 0.554 (MobileNetV3) to 0.645 (DenseNet121) on the full dataset \cite{shojaei2025pgu}. To our knowledge, no study has fused these images with symptoms or examined what the models learn.
+
+\paragraph{Multimodal fusion} Medical image--tabular fusion is usually grouped into early fusion (concatenating features), late fusion (combining predictions) and joint or intermediate fusion (learning a shared representation) \cite{huang2020fusion}. Gated units learn how much to trust each modality per sample \cite{arevalo2017gmu}, and feature-wise linear modulation (FiLM) lets one modality scale and shift the features of another \cite{perez2018film}. We implement all of these families on equal terms.
+
+\paragraph{Shortcut learning and site confounding} Shortcut learning occurs when a model relies on cues that are predictive in the training distribution but not causally related to the target \cite{geirhos2020shortcut}. In medical imaging, such cues include the hospital, scanner, positioning markers and patient metadata \cite{zech2018pneumonia,degrave2021covid,badgeley2019hip}. Hidden stratification, where performance is driven by an easy subgroup, can make overall metrics misleading \cite{oakdenrayner2020hidden}. Methodological reviews recommend evaluation across sites, explicit confounder baselines and reporting of variance across splits \cite{varoquaux2022failures}. We apply these recommendations to throat imaging.
+
+%% ---------------------------------------------------------------------------------------------
+\section{Materials and methods}
+\label{sec:methods}
+
+The study is reported following TRIPOD+AI \cite{collins2024tripodai}. All analyses are exploratory: the analysis plan was written before modelling, but hypotheses were not formally frozen before the first results were seen. Figure~\ref{fig:design} summarises the study design.
+
+\begin{figure}[!htbp]
+\centering
+\figfile{figures/fig1_study_design.pdf}{\textwidth}
+\caption{Study design: 742 patients, 735 analysed; inputs (photograph, 20 symptoms, age, sex), model families, 5\,$\times$\,5 nested cross-validation and the shortcut analyses.}
+\label{fig:design}
+\end{figure}
+
+\subsection{Dataset}
+
+We used PGUPharyngitis (Figshare, \url{https://doi.org/10.6084/m9.figshare.28163513}, CC BY 4.0) \cite{shojaei2025pgu}. It contains one throat photograph per patient, taken with a Samsung Galaxy S21 Ultra or a Xiaomi phone in two Iranian cities between October 2023 and May 2024, and a table with age, sex, 20 binary symptoms and four to nine physician diagnoses (bacterial or non-bacterial). The original study received ethics approval (IR.BPUMS.REC.1403.282) with written informed consent; we used the anonymised public release only.
+
+The table lists 742 patients. Patient 666 had no image. Three pairs of patients (19/23, 218/256, 301/305) shared an identical photograph (perceptual-hash distance 0) but had different ages, sexes or symptoms; because the image could not be assigned to either record, we excluded all six. The analysis set has 735 patients. The table has no city or phone column, so we read the phone model from each photograph's EXIF metadata: Samsung (model code SM-G998B) for 382 patients, Xiaomi (2201117SG) for 290, and unknown for 63. Because each city used one phone \cite{shojaei2025pgu}, we treat the phone as a proxy for acquisition site and write ``phone/site'' throughout.
+
+\subsection{Labels}
+
+The 735 patients received 3,662 diagnoses (median 5 per patient; one patient had 3 recorded). The reference label is the majority vote. One hundred patients (13.6\%) had a tied vote; in the primary analysis ties count as bacterial, giving 205 bacterial cases (27.9\%). Two sensitivity analyses count ties as non-bacterial (105 bacterial, 14.3\%) or exclude them (635 patients, 16.5\% bacterial). We also keep the soft label, the share of physicians voting bacterial, and the agreement, $|\text{soft} - 0.5| \times 2$; 230 patients (31\%) had unanimous votes. The labels reflect expert consensus from photographs and symptoms, not microbiological testing.
+
+\subsection{Preprocessing}
+
+Images were rotated according to EXIF orientation, converted to RGB and resized so the short side was 256 pixels. Training augmentation used a random resized crop to $224 \times 224$ (scale 0.8--1.0), horizontal flip, rotation up to $15^\circ$ and brightness and contrast jitter of 10\%. Hue and saturation were not altered, because throat redness is diagnostic. At test time we used a 224-pixel centre crop and averaged predictions over the original and a horizontally flipped image. Images were normalised with ImageNet statistics. Tabular inputs were the 20 symptoms, sex (0/1) and age; age was standardised and any missing value imputed using statistics from the training data only (no values were missing).
+
+\subsection{Evaluation protocol}
+
+All models used the same stratified 5-fold cross-validation repeated five times with different seeds (25 test folds of 147 patients), stratified on label $\times$ phone. Fold assignments are released with the code. Within each training part, a 3-fold inner cross-validation selected hyperparameters (by AUC), the number of training epochs for neural fusion models, and the decision threshold, chosen to maximise balanced accuracy on inner out-of-fold predictions. Scalers, imputers, PCA, thresholds and stacking meta-models were fitted on training data only. Because fine-tuning is costly, fine-tuned CNNs used one repeat (5 folds) and a stratified 15\% validation split of each training part for early stopping and threshold choice.
+
+\subsection{Models}
+
+\paragraph{Symptom models} Logistic regression (L2, class-balanced, $C \in \{0.01, 0.1, 1, 10\}$), LightGBM \cite{ke2017lightgbm} (4 or 8 leaves, 100 or 300 trees, learning rate 0.05) and a two-layer perceptron (64--64 units, L2 penalty $\in \{0.001, 0.1, 1\}$) used the 20 symptoms, sex and age.
+
+\paragraph{Clinical score} A modified McIsaac score summed fever (``Pyrexia''), absence of cough and an age term ($+1$ for 3--14 years, $-1$ for $\geq 45$ years) \cite{mcisaac1998}; exudate and lymph-node items are not recorded.
+
+\paragraph{Reference baselines} To measure shortcuts we trained three models that do not use throat anatomy: (i) \textit{phone only}, predicting the training-fold bacterial rate of the photograph's phone; (ii) \textit{image size}, logistic regression on the log width, height, aspect ratio and area of the original photograph; and (iii) \textit{photo statistics}, logistic regression on 18 global statistics of each resized photograph (RGB and HSV means and standard deviations, shares of dark, bright and strongly red pixels, and edge density).
+
+\paragraph{Frozen image models} We extracted embeddings from DINOv2 ViT-S/14 \cite{oquab2024dinov2} (384 dimensions, 224-pixel input) and ConvNeXt-Tiny pretrained on ImageNet-22k and fine-tuned on ImageNet-1k \cite{liu2022convnext} (768 dimensions), once per image for the test view, the flipped view and ten random training augmentations. Standardised embeddings were classified by class-balanced logistic regression ($C \in \{0.001, 0.01, 0.1, 1\}$).
+
+\paragraph{Fine-tuned image models} To reproduce the published baselines we fine-tuned DenseNet121 \cite{huang2017densenet}, MobileNetV3-Large \cite{howard2019mobilenetv3} and ConvNeXt-Tiny end to end with AdamW (learning rate $10^{-4}$, weight decay $10^{-4}$, cosine schedule, batch 16), class-weighted cross-entropy, up to 30 epochs and early stopping on validation AUC (patience 7).
+
+\paragraph{Standard fusion} \textit{Late fusion} averaged the symptom and image logistic-regression probabilities. \textit{Early fusion} fitted one logistic regression on the tabular inputs plus a PCA projection of the image embedding (16 or 64 components). \textit{Stacking} fitted a logistic regression on the logits of inner out-of-fold symptom and image predictions.
+
+\paragraph{Gated cross-modal fusion} The image embedding passes through layer normalisation, dropout and a linear layer to a 128-dimensional vector $h_{\text{img}}$; the 22 tabular inputs pass through a 22--64--128 perceptron to $h_{\text{sym}}$. A gate computes a scalar weight per patient,
+\begin{equation}
+g = \sigma\!\left(W [h_{\text{img}}; h_{\text{sym}}] + b\right), \qquad z = g\, h_{\text{img}} + (1-g)\, h_{\text{sym}},
+\label{eq:gate}
+\end{equation}
+and a dropout--linear head maps $z$ to a logit. Auxiliary image-only and symptom-only heads add their losses with weight $\lambda$, and modality dropout (probability 0.2 per branch, never both) randomly removes one branch during training. Training used the soft label as target in class-weighted binary cross-entropy, AdamW with weight decay $10^{-4}$, batch 32 and a cosine schedule over 60 epochs. Each epoch drew one of the ten cached augmentation embeddings per patient. The inner cross-validation selected the learning rate $\{10^{-3}, 3 \times 10^{-4}\}$, dropout $\{0.3, 0.5\}$, $\lambda \in \{0, 0.3\}$ and the number of epochs (maximum of the smoothed mean inner AUC curve); the model was then retrained on the full training part. Ablations replaced the gate by concatenation or by FiLM \cite{perez2018film}, used hard labels, removed the auxiliary heads, removed modality dropout, or removed fever and cough from the inputs.
+
+\subsection{Shortcut and label-dependence analyses}
+\label{sec:shortcut-methods}
+
+\begin{enumerate}
+\item \textit{Phone identification:} logistic regression predicting Xiaomi versus Samsung (672 patients with known phone) from image embeddings, image size or photo statistics, in 5-fold cross-validation.
+\item \textit{Within-phone evaluation:} for each model, AUC computed separately within the Samsung, Xiaomi and unknown-phone strata of the out-of-fold predictions and averaged weighted by stratum size. A phone-only model scores 0.5 by construction.
+\item \textit{Within-phone training:} models trained and tested inside one phone (5-fold $\times$ 5 repeats).
+\item \textit{Cross-phone transfer:} models trained on all patients of one phone and tested on the other, with patient-level bootstrap confidence intervals (1,000 resamples).
+\item \textit{Large images only:} within-phone AUC restricted to photographs whose original short side was at least 500 pixels.
+\item \textit{Shuffled-image control:} gated fusion trained after permuting image embeddings across patients; with no leakage it should lose the image signal.
+\item \textit{Label dependence:} AUC on unanimous versus split votes; Spearman correlation with the vote share; and a residual test in which DINOv2 embeddings predict the out-of-fold errors of the symptom model (ridge regression, 5-fold cross-validated correlation, 500 permutations).
+\end{enumerate}
+
+\subsection{Statistics}
+
+For each model and repeat, the five test folds were pooled and AUC, PR-AUC, balanced accuracy, macro F1, sensitivity, specificity, Brier score and calibration slope were computed; we report the mean $\pm$ SD across repeats. AUC 95\% confidence intervals come from 1,000 patient-level bootstrap resamples within each repeat, averaged across repeats. Model comparisons used the Nadeau--Bengio corrected resampled $t$-test on the 25 fold-level AUC differences \cite{nadeau2003inference}, which accounts for overlapping training sets, and the DeLong test \cite{delong1988,sun2014fastdelong} within each repeat. Three hypotheses compared gated fusion with the best symptom-only model (H1), the best image-only model (H2) and the best standard fusion model (H3), one-sided, with Holm correction \cite{holm1979}; choosing the best comparator by its own performance makes these tests conservative. Decision curves \cite{vickers2006dca} show net benefit for threshold probabilities 0.05--0.60.
+
+\subsection{Explainability and implementation}
+
+We computed SHAP values \cite{lundberg2017shap} for a LightGBM symptom model, summarised gate values by vote agreement, and produced Grad-CAM maps \cite{selvaraju2017gradcam} from a ConvNeXt-Tiny fine-tuned on all patients for the median best epoch count (seven), used only for visualisation. Code ran on an Apple M5 MacBook Air (16\,GB) with Python 3.11, PyTorch 2.14 (Metal backend), timm 1.0, scikit-learn 1.9 and LightGBM 4.7.
+
+%% ---------------------------------------------------------------------------------------------
+\section{Results}
+\label{sec:results}
+
+\subsection{Cohort}
+
+The 735 patients had a mean age of 28.8 years (SD 17.1, range 2--83) and 373 (50.7\%) were male (Table~\ref{tab:cohort}). Bacterial prevalence differed threefold between phones: 14.9\% for Samsung photographs and 43.8\% for Xiaomi photographs.
+
+\begin{table}[!htbp]
+\centering
+\caption{Cohort characteristics (primary analysis, ties counted as bacterial).}
+\label{tab:cohort}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Characteristic & Value \\
+\midrule
+Patients analysed & 735 (of 742) \\
+Age, mean (SD), range & 28.8 (17.1), 2--83 years \\
+Male & 373 (50.7\%) \\
+Physician diagnoses, total (median per patient) & 3,662 (5) \\
+Unanimous votes & 230 (31.3\%) \\
+Tied votes & 100 (13.6\%) \\
+Bacterial, majority vote & 205 (27.9\%) \\
+Samsung photographs: patients (bacterial) & 382 (57; 14.9\%) \\
+Xiaomi photographs: patients (bacterial) & 290 (127; 43.8\%) \\
+Phone unknown: patients (bacterial) & 63 (21; 33.3\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Benchmark}
+
+Table~\ref{tab:main} and Fig.~\ref{fig:roc} summarise the benchmark. The best model was stacked fusion of DINOv2 image and symptom predictions (AUC 0.703, 95\% CI 0.66--0.74), followed by the frozen DINOv2 image model alone (0.700). Late, early and gated fusion reached 0.683--0.696. Fine-tuning did not beat frozen features: ConvNeXt-Tiny reached 0.688, DenseNet121 0.672 and MobileNetV3 0.578, close to the published 0.645 and 0.554 \cite{shojaei2025pgu}. Symptoms alone were weak (best 0.596), and the modified McIsaac score ranked patients worse than chance (0.437).
+
+Three models that use no throat anatomy did about as well as the published deep networks. The phone-only model reached 0.673, above the published image baseline and above all symptom models. Eighteen global photo statistics reached 0.646, and the original image size 0.562.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\caption{Discrimination under 5\,$\times$\,5 cross-validation (fine-tuned CNNs: 1\,$\times$\,5). ``Within phone'' is the size-weighted mean AUC inside each phone stratum. Balanced accuracy and macro F1 use thresholds chosen by inner cross-validation.}
+\label{tab:main}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.4cm}ccccc@{}}
+\toprule
+Model & AUC [95\% CI] & Within phone & Bal.\ acc. & F1 & Brier \\
+\midrule
+Stacked fusion, DINOv2 + sympt. & 0.703 [0.66, 0.74] & 0.586 & 0.659 & 0.637 & 0.218 \\
+Image, frozen DINOv2 & 0.700 [0.66, 0.74] & 0.586 & 0.656 & 0.630 & 0.215 \\
+Gated fusion, DINOv2 & 0.691 [0.65, 0.73] & 0.584 & 0.645 & 0.613 & 0.188 \\
+Image, fine-tuned ConvNeXt-Tiny & 0.688 [0.64, 0.73] & 0.605 & 0.652 & 0.615 & 0.211 \\
+Gated fusion, ConvNeXt & 0.684 [0.64, 0.73] & 0.582 & 0.624 & 0.606 & 0.190 \\
+Image, frozen ConvNeXt-Tiny & 0.681 [0.64, 0.72] & 0.561 & 0.641 & 0.605 & 0.218 \\
+Phone only & 0.673 [0.63, 0.71] & 0.488 & 0.668 & 0.622 & 0.182 \\
+Image, fine-tuned DenseNet121 & 0.672 [0.63, 0.71] & 0.556 & 0.622 & 0.562 & 0.207 \\
+Photo statistics (18 features) & 0.646 [0.60, 0.69] & 0.536 & 0.598 & 0.559 & 0.233 \\
+Symptoms, perceptron & 0.596 [0.55, 0.64] & -- & 0.578 & 0.563 & 0.236 \\
+Symptoms, LightGBM & 0.591 [0.55, 0.64] & 0.550 & 0.561 & 0.537 & 0.240 \\
+Image, fine-tuned MobileNetV3 & 0.578 [0.53, 0.62] & 0.519 & 0.550 & 0.542 & 0.324 \\
+Image size only & 0.562 [0.52, 0.61] & 0.493 & 0.536 & 0.504 & 0.247 \\
+Gated fusion, shuffled images & 0.529 [0.48, 0.58] & 0.507 & 0.524 & 0.500 & 0.211 \\
+Modified McIsaac score & 0.437 [0.39, 0.48] & -- & 0.493 & 0.245 & 0.241 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\figfile{figures/fig2_roc.pdf}{0.55\textwidth}
+\caption{Mean ROC curves ($\pm$1 SD over five repeats) for stacked fusion (DINOv2), the frozen DINOv2 image model, the phone-only model and the LightGBM symptom model. Dashed line: chance.}
+\label{fig:roc}
+\end{figure}
+
+\subsection{Device and site shortcuts}
+
+Every analysis pointed to the phone as the main source of image performance (Table~\ref{tab:shortcut}, Fig.~\ref{fig:shortcut}). Image embeddings identified the phone almost perfectly (AUC 0.993 for DINOv2 and 0.997 for ConvNeXt), and so did the 18 photo statistics (0.958). When AUC was computed within each phone, image models fell from about 0.70 to 0.56--0.61, while the phone-only model fell to 0.49, as expected. Models trained and tested inside one phone did worse still: image AUC was 0.50 on Samsung photographs and 0.55--0.58 on Xiaomi photographs. Models did not transfer between phones: trained on one phone and tested on the other, image AUC was 0.50--0.53 and every 95\% confidence interval included 0.5. Restricting to photographs with an original short side of at least 500 pixels did not change within-phone AUC (DINOv2: 0.568 Samsung, 0.611 Xiaomi), so very small crops do not explain the effect.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\caption{Shortcut analyses (AUC). In the cross-phone rows, the column names the phone used for testing; the model was trained on the other phone.}
+\label{tab:shortcut}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.8cm}ccc@{}}
+\toprule
+Analysis & Samsung & Xiaomi & Overall \\
+\midrule
+Identify phone: DINOv2 / ConvNeXt embeddings & -- & -- & 0.993 / 0.997 \\
+Identify phone: photo statistics / image size & -- & -- & 0.958 / 0.754 \\
+\addlinespace
+Within-phone training: DINOv2 image & 0.502 & 0.575 & -- \\
+Within-phone training: ConvNeXt image & 0.499 & 0.548 & -- \\
+Within-phone training: DINOv2 + symptoms & 0.546 & 0.561 & -- \\
+Within-phone training: symptoms & 0.627 & 0.517 & -- \\
+Within-phone training: photo statistics & 0.507 & 0.538 & -- \\
+\addlinespace
+Cross-phone: DINOv2 image [95\% CI] & 0.502 [0.41, 0.59] & 0.519 [0.45, 0.58] & -- \\
+Cross-phone: ConvNeXt image [95\% CI] & 0.507 [0.43, 0.59] & 0.530 [0.46, 0.60] & -- \\
+Cross-phone: symptoms [95\% CI] & 0.424 [0.34, 0.52] & 0.482 [0.41, 0.55] & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\figfile{figures/fig3_site_shortcut.pdf}{\textwidth}
+\caption{Device and site shortcut. (A) AUC over all patients and the size-weighted AUC within each phone; the phone-only model drops to chance within a phone. (B) Models trained on all photographs from one phone and tested on the other, with 95\% bootstrap confidence intervals; all intervals include 0.5.}
+\label{fig:shortcut}
+\end{figure}
+
+The frozen DINOv2 image model beat the phone-only model by 0.025 AUC (corrected $t$-test $p = 0.035$, uncorrected), whereas ConvNeXt did not ($+0.006$, $p = 0.35$). Within the Xiaomi subgroup the photographs therefore carry a modest signal (AUC about 0.58--0.61); within the Samsung subgroup they carry essentially none.
+
+\subsection{Does fusion help?}
+
+Gated fusion (DINOv2) beat the best symptom model by 0.095 AUC (Holm-adjusted $p = 0.012$; significant in 5 of 5 DeLong repeats) but did not beat the best image-only model ($-0.020$, $p = 1.0$) or the best standard fusion ($-0.008$, $p = 1.0$; Table~\ref{tab:hypotheses}). Stacking added 0.003 AUC over the image alone ($p = 0.29$). Within a phone, adding symptoms to the image changed AUC by $-0.01$ to $+0.04$. Symptoms therefore add little once the photograph is known.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\caption{Planned comparisons for gated fusion (DINOv2) under three tie rules. $\Delta$AUC is the mean fold-level difference; $p$ values are one-sided, Nadeau--Bengio corrected and Holm-adjusted.}
+\label{tab:hypotheses}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.9cm}ccc@{}}
+\toprule
+Comparison & Ties bacterial & Ties non-bacterial & Ties dropped \\
+\midrule
+H1: vs best symptom-only & $+0.095$ ($p = 0.012$) & $+0.044$ ($p = 0.38$) & $+0.051$ ($p = 0.22$) \\
+H2: vs best image-only & $-0.020$ ($p = 1.0$) & $-0.009$ ($p = 1.0$) & $-0.002$ ($p = 1.0$) \\
+H3: vs best standard fusion & $-0.008$ ($p = 1.0$) & $-0.018$ ($p = 1.0$) & $-0.019$ ($p = 1.0$) \\
+\addlinespace
+Image (DINOv2): AUC / within phone & 0.700 / 0.586 & 0.671 / 0.609 & 0.696 / 0.605 \\
+Phone only: AUC & 0.673 & 0.618 & 0.650 \\
+Best symptom-only: AUC & 0.596 & 0.616 & 0.639 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ablations}
+
+No component of the fusion network made a measurable difference (Fig.~\ref{fig:ablation}). With ConvNeXt features, the full gated model reached 0.684; replacing the gate by concatenation gave 0.686 ($p = 0.60$), FiLM 0.681, removing the auxiliary heads 0.682 and removing modality dropout 0.682. Training on hard instead of soft labels lowered AUC to 0.672 (difference 0.012, $p = 0.19$). Removing fever and cough did not hurt (0.690). The shuffled-image control fell to 0.529, below symptoms alone, confirming that the pipeline does not leak labels and that the fusion network relied almost entirely on the image branch.
+
+\begin{figure}[!htbp]
+\centering
+\figfile{figures/fig4_ablation.pdf}{0.7\textwidth}
+\caption{Ablation of the gated fusion network (ConvNeXt features): mean fold AUC with 95\% confidence interval. The shuffled-image control falls to chance.}
+\label{fig:ablation}
+\end{figure}
+
+\subsection{Label dependence and sensitivity}
+
+Models discriminated better on unanimous than on split votes (DINOv2 image: 0.719 vs 0.678; symptoms: 0.623 vs 0.580). Image predictions correlated more with the physicians' vote share than symptom predictions did (Spearman 0.32 vs 0.13), though the phone-only model also reached 0.28. Image embeddings predicted the out-of-fold errors of the symptom model (cross-validated $r = 0.29$; permutation $p = 0.002$), but this test cannot separate throat appearance from phone identity. Under both alternative tie rules the conclusions held: image models stayed near 0.67--0.70 overall and about 0.61 within phone, fusion never beat the image alone, and the advantage of fusion over symptoms was no longer significant (Table~\ref{tab:hypotheses}).
+
+\subsection{Calibration and clinical utility}
+
+Brier scores ranged from 0.182 (phone only) to 0.218 (stacking). Class-balanced training made image and fusion models overestimate risk, and decision-curve analysis showed no net benefit over treating everyone at thresholds up to 0.20; at 0.30 the stacked model gave a net benefit of 0.024 versus $-0.030$ for treat-all, but the phone-only model gave 0.082 (Fig.~\ref{fig:calib}). The models are therefore not ready for treatment decisions.
+
+\begin{figure}[!htbp]
+\centering
+\figfile{figures/fig6a_calibration.pdf}{0.45\textwidth}\hfill
+\figfile{figures/fig6b_decision_curve.pdf}{0.52\textwidth}
+\caption{(A) Calibration curves and (B) decision curves for the main models. Treat-all and treat-none are shown for reference.}
+\label{fig:calib}
+\end{figure}
+
+\subsection{Explainability and subgroups}
+
+In the symptom model, cough, age, vomiting, myalgia and sore throat had the largest mean absolute SHAP values (Fig.~\ref{fig:shap}). The gate weighted the image at $g \approx 0.48$ on average (DINOv2) and slightly less when physicians disagreed (median 0.47 vs 0.50, Mann--Whitney $p < 0.001$; Fig.~\ref{fig:gate}). Grad-CAM maps (Fig.~\ref{fig:gradcam}) of the most confident bacterial cases highlighted white spots in close-up photographs, whereas the most confident non-bacterial cases were wide views of the oral cavity with the uvula and tongue visible, suggesting that framing and zoom, which may differ between sites, act as an additional cue. The image model discriminated better in children aged 14 or younger (AUC 0.77) than in adults aged 45 or older (0.64), and similarly in women (0.68) and men (0.72) (Fig.~\ref{fig:subgroups}).
+
+\begin{figure}[!htbp]
+\centering
+\figfile{figures/fig5_gradcam.png}{\textwidth}
+\caption{Grad-CAM maps of a ConvNeXt-Tiny fine-tuned on all patients for the six most confident bacterial (top) and non-bacterial (bottom) cases. Red marks high attention. Bacterial predictions are close-ups; non-bacterial predictions are wide views.}
+\label{fig:gradcam}
+\end{figure}
+
+%% ---------------------------------------------------------------------------------------------
+\section{Discussion}
+\label{sec:discussion}
+
+We set out to improve smartphone pharyngitis classification by adding symptoms to throat photographs. Instead, the benchmark showed that most of the apparent image performance on PGUPharyngitis comes from recognising the phone, and with it the city, that produced the photograph. The phone alone predicted the expert label as well as the published deep-learning baseline, and 18 colour statistics nearly matched it. Image embeddings identified the phone almost perfectly; within one phone, image models lost most of their discrimination; and no model transferred between phones.
+
+\paragraph{Why the shortcut exists} Bacterial prevalence was 44\% among Xiaomi photographs and 15\% among Samsung photographs. Whether this reflects true epidemiological differences between the two cities, different referral patterns or different labelling physicians cannot be resolved from the released data. Either way, any feature that identifies the phone (colour rendering, sharpness, lighting, framing) becomes predictive of the label. Our Grad-CAM maps suggest that framing differs too: confident bacterial predictions were close-ups, confident non-bacterial predictions wide views. This is the same failure mode reported for chest radiographs, where models recognised hospitals and scanners \cite{zech2018pneumonia,degrave2021covid,badgeley2019hip}, and it is invisible in pooled cross-validation.
+
+\paragraph{What remains when the shortcut is removed} Within the Xiaomi subgroup, image models kept a modest signal (AUC 0.58--0.61); within the Samsung subgroup, which had only 57 bacterial cases, they kept essentially none. The images do contain some information beyond symptoms, as the residual test showed, but a within-site AUC around 0.6 is far from clinically useful. The image model also worked best in children, in whom streptococcal pharyngitis is most common, which may deserve a dedicated study.
+
+\paragraph{Fusion} Fusion beat symptoms alone only under one of three equally defensible tie rules, and it never beat the image alone. The gate, auxiliary heads, modality dropout and FiLM conditioning made no difference, and the gated model learned to weight both branches almost equally. With symptoms this weak (AUC about 0.6) and an image signal dominated by site, there is little for a fusion architecture to exploit. For future work on this dataset, the lesson is that a better fusion architecture will not fix confounded data.
+
+\paragraph{Symptoms and clinical scores} The modified McIsaac score ranked patients worse than chance. Two explanations are likely: the dataset lacks exudate and lymph-node items, and the labels come from physicians who were not using a clinical score. Cough and age were the most informative symptoms, consistent with clinical scores, but together the symptoms explained little of the physicians' decision.
+
+\paragraph{Implications} Smartphone throat-imaging studies should (i) report a device- or site-only baseline, (ii) evaluate within and across acquisition sites, (iii) balance or randomise devices across sites at data collection, and (iv) standardise framing. Datasets should record site and device per image. For PGUPharyngitis, we recommend that future work report within-phone and cross-phone AUC alongside pooled results; our folds and out-of-fold predictions make such comparisons straightforward.
+
+\subsection{Limitations}
+
+\begin{enumerate}
+\item Labels are physician consensus from photographs and symptoms, not throat culture or rapid antigen tests, so all results concern agreement with experts rather than infection.
+\item City is not recorded; we used the EXIF phone model as a proxy for site and cannot separate phone from city effects. Sixty-three photographs had no EXIF phone.
+\item One hundred patients had tied votes; conclusions about fusion versus symptoms depend on the tie rule.
+\item The dataset is small (205 bacterial cases) and from one country, and there is no external test set.
+\item Fine-tuned CNNs were evaluated with one repeat instead of five, so their estimates are less precise.
+\item The analyses were planned but not formally pre-registered and should be regarded as exploratory.
+\item Grad-CAM maps were not rated by clinicians, and framing differences were observed, not measured.
+\end{enumerate}
+
+%% ---------------------------------------------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+
+On the largest public smartphone pharyngitis dataset, image models appear to reach an AUC near 0.70, but most of this performance comes from recognising the phone and site that took the photograph. Within one site the photographs carry at most a modest signal, nothing transfers across sites, and adding symptoms through any fusion design does not help. Smartphone pharyngitis models should be judged by their within-site and cross-site performance, against a device-only baseline, before any clinical claim is made.
+
+%% ---------------------------------------------------------------------------------------------
+\section*{CRediT authorship contribution statement}
+\textbf{Sandesh Bhatta:} Conceptualization, Methodology, Software, Validation, Formal analysis, Investigation, Data curation, Visualization, Writing -- original draft, Writing -- review \& editing.
+
+\section*{Declaration of competing interest}
+The author declares no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+\section*{Funding}
+This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors.
+
+\section*{Ethics statement}
+This study used only the anonymised, publicly released PGUPharyngitis dataset. The original data collection was approved by a research ethics committee (IR.BPUMS.REC.1403.282) with written informed consent from all participants \cite{shojaei2025pgu}. No additional ethics approval was required for this secondary analysis of public data.
+
+\section*{Data availability}
+PGUPharyngitis is publicly available under CC BY 4.0 at \url{https://doi.org/10.6084/m9.figshare.28163513}. Fold assignments and out-of-fold predictions are released with the code.
+
+\section*{Code availability}
+All code, configuration files, fold assignments and out-of-fold predictions are available at \url{https://github.com/<username>/pharyngitis-fusion} (archived at Zenodo, DOI to be added). Two scripts reproduce every table and figure.
+
+\section*{Declaration of generative AI and AI-assisted technologies in the writing process}
+During the preparation of this work the author used Claude (Anthropic) to assist with code development, data analysis and drafting of the manuscript. After using this tool, the author reviewed and edited the content as needed and takes full responsibility for the content of the publication.
+
+\section*{Acknowledgements}
+The author thanks the creators of PGUPharyngitis for releasing their data publicly.
+
+%% ---------------------------------------------------------------------------------------------
+\appendix
+\section{Supplementary figures}
+\label{app:supp}
+
+\begin{figure}[h]
+\centering
+\figfile{figures/figS1_subgroups.pdf}{0.75\textwidth}
+\caption{AUC of the frozen DINOv2 image model by sex, age band and phone, with 95\% bootstrap confidence intervals. Dashed line: overall AUC.}
+\label{fig:subgroups}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\figfile{figures/figS2_shap.pdf}{0.75\textwidth}
+\caption{SHAP summary of the LightGBM symptom model fitted on all patients.}
+\label{fig:shap}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\figfile{figures/figS3_gate.pdf}{\textwidth}
+\caption{Gate values of the gated fusion model (DINOv2): distribution for unanimous and split votes (left) and median gate value by number of positive symptoms (right). $g = 1$ means the model relies only on the image.}
+\label{fig:gate}
+\end{figure}
+
+\bibliographystyle{elsarticle-num}
+\bibliography{references}
+
+\end{document}
