@@ -1,0 +1,4 @@
+analysis,auc,n,auc_sd
+identify phone (Xiaomi vs Samsung),0.9580068604441234,672,
+"label, trained and tested within Samsung S21 Ultra",0.5073792172739541,382,0.028069770577377227
+"label, trained and tested within Xiaomi",0.5375585720496594,290,0.020013643097981725

@@ -1,6 +1,7 @@
 model,auc_all,auc_unanimous,auc_split,auc_within_phone,spearman_vote_share,n_unanimous,n_split
 phone,0.6727,0.67,0.6507,0.4884,0.2821,230,505
 size,0.5619,0.6791,0.5731,0.493,0.0667,230,505
+lowlevel,0.6463,0.6378,0.6197,0.5357,0.2529,230,505
 sym_lgbm,0.5914,0.623,0.5801,0.55,0.1338,230,505
 img_lr_convnext_tiny,0.681,0.7536,0.652,0.5614,0.2884,230,505
 img_lr_vit_small_patch14_dinov2,0.7,0.7194,0.6781,0.5855,0.3237,230,505
