@@ -265,10 +265,10 @@ Phone only & 0.673 [0.63, 0.71] & 0.488 & 0.668 & 0.622 & 0.182 \\
 Image, fine-tuned DenseNet121 & 0.672 [0.63, 0.71] & 0.556 & 0.622 & 0.562 & 0.207 \\
 Photo statistics (18 features) & 0.646 [0.60, 0.69] & 0.536 & 0.598 & 0.559 & 0.233 \\
 Symptoms, perceptron & 0.596 [0.55, 0.64] & -- & 0.578 & 0.563 & 0.236 \\
-Symptoms, LightGBM & 0.591 [0.55, 0.64] & 0.550 & 0.561 & 0.537 & 0.240 \\
+Symptoms, LightGBM & 0.591 [0.54, 0.64] & 0.550 & 0.561 & 0.537 & 0.240 \\
 Image, fine-tuned MobileNetV3 & 0.578 [0.53, 0.62] & 0.519 & 0.550 & 0.542 & 0.324 \\
-Image size only & 0.562 [0.52, 0.61] & 0.493 & 0.536 & 0.504 & 0.247 \\
-Gated fusion, shuffled images & 0.529 [0.48, 0.58] & 0.507 & 0.524 & 0.500 & 0.211 \\
+Image size only & 0.562 [0.51, 0.61] & 0.493 & 0.536 & 0.504 & 0.247 \\
+Gated fusion, shuffled images & 0.529 [0.48, 0.57] & 0.507 & 0.524 & 0.500 & 0.211 \\
 Modified McIsaac score & 0.437 [0.39, 0.48] & -- & 0.493 & 0.245 & 0.241 \\
 \bottomrule
 \end{tabular}
@@ -304,8 +304,8 @@ Within-phone training: DINOv2 + symptoms & 0.546 & 0.561 & -- \\
 Within-phone training: symptoms & 0.627 & 0.517 & -- \\
 Within-phone training: photo statistics & 0.507 & 0.538 & -- \\
 \addlinespace
-Cross-phone: DINOv2 image [95\% CI] & 0.502 [0.41, 0.59] & 0.519 [0.45, 0.58] & -- \\
-Cross-phone: ConvNeXt image [95\% CI] & 0.507 [0.43, 0.59] & 0.530 [0.46, 0.60] & -- \\
+Cross-phone: DINOv2 image [95\% CI] & 0.502 [0.42, 0.59] & 0.519 [0.45, 0.59] & -- \\
+Cross-phone: ConvNeXt image [95\% CI] & 0.507 [0.42, 0.59] & 0.530 [0.47, 0.60] & -- \\
 Cross-phone: symptoms [95\% CI] & 0.424 [0.34, 0.52] & 0.482 [0.41, 0.55] & -- \\
 \bottomrule
 \end{tabular}
@@ -362,7 +362,7 @@ Models discriminated better on unanimous than on split votes (DINOv2 image: 0.71
 
 \subsection{Calibration and clinical utility}
 
-Brier scores ranged from 0.182 (phone only) to 0.218 (stacking). Class-balanced training made image and fusion models overestimate risk, and decision-curve analysis showed no net benefit over treating everyone at thresholds up to 0.20; at 0.30 the stacked model gave a net benefit of 0.024 versus $-0.030$ for treat-all, but the phone-only model gave 0.082 (Fig.~\ref{fig:calib}). The models are therefore not ready for treatment decisions.
+Among the frozen-feature image and fusion models, Brier scores ranged from 0.188 (gated fusion, DINOv2) to 0.226 (stacking, ConvNeXt); the phone-only model scored 0.182. Class-balanced training made image and fusion models overestimate risk, and decision-curve analysis showed no net benefit over treating everyone at thresholds up to 0.20; at 0.30 the stacked model gave a net benefit of 0.024 versus $-0.030$ for treat-all, but the phone-only model gave 0.082 (Fig.~\ref{fig:calib}). The models are therefore not ready for treatment decisions.
 
 \begin{figure}[!htbp]
 \centering
