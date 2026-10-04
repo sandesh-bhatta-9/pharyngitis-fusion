@@ -12,7 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import copy
+import time
 
 import numpy as np
 import torch
@@ -57,6 +57,7 @@ def fit(name, images, y, fit_idx, val_idx, ft, crop, device, pretrained, seed, e
                               dtype=torch.float32, device=device)
     best, best_auc, best_ep, wait = None, -1.0, n_ep, 0
     for ep in range(1, n_ep + 1):
+        t0 = time.time()
         model.train()
         for x, t in batches(images, fit_idx, train_tf, ft["batch_size"], y, shuffle=True, rng=rng):
             loss = F.binary_cross_entropy_with_logits(model(x.to(device)).squeeze(-1), t.to(device),
@@ -66,10 +67,14 @@ def fit(name, images, y, fit_idx, val_idx, ft, crop, device, pretrained, seed, e
             opt.step()
         sched.step()
         if val_idx is None:
+            print(f"    epoch {ep}/{n_ep} loss {loss.item():.3f} ({time.time() - t0:.0f}s)", flush=True)
             continue
         auc = roc_auc_score(y[val_idx], predict(model, images, val_idx, [test_tf], ft["batch_size"], device))
+        print(f"    epoch {ep}/{n_ep} loss {loss.item():.3f} val AUC {auc:.3f} ({time.time() - t0:.0f}s)", flush=True)
         if auc > best_auc:
-            best, best_auc, best_ep, wait = copy.deepcopy(model.state_dict()), auc, ep, 0
+            # keep the best weights on the CPU (cheap and avoids holding a second copy in GPU memory)
+            best = {k: v.detach().to("cpu", copy=True) for k, v in model.state_dict().items()}
+            best_auc, best_ep, wait = auc, ep, 0
         else:
             wait += 1
             if wait >= ft["patience"]:
@@ -85,11 +90,13 @@ def main():
     ap.add_argument("--model", required=True, help="timm model name")
     ap.add_argument("--repeats", type=int)
     ap.add_argument("--no-pretrained", action="store_true", help="random weights; smoke tests only")
+    ap.add_argument("--threads", type=int, default=4, help="CPU threads (keeps the Mac responsive)")
     ap.add_argument("--save-full", action="store_true",
                     help="after CV, train on all patients (median best epoch) and save it for Grad-CAM")
     args = ap.parse_args()
     cfg = load_config(args.config)
     set_seed(cfg["seed"])
+    torch.set_num_threads(args.threads)
     df, _ = load_data(cfg)
     device, ft, crop = torch_device(), cfg["finetune"], cfg["image"]["crop"]
     test_tf, flip_tf, _ = transforms(crop)
@@ -108,7 +115,7 @@ def main():
         thr = choose_threshold(y[val_idx], predict(model, images, val_idx, [test_tf], ft["batch_size"], device))
         p = predict(model, images, te, [test_tf, flip_tf], ft["batch_size"], device)
         best_eps.append(ep)
-        print(f"repeat {r} fold {k}: best epoch {ep}, val AUC {vauc:.3f}, test AUC {roc_auc_score(y[te], p):.3f}")
+        print(f"repeat {r} fold {k}: best epoch {ep}, val AUC {vauc:.3f}, test AUC {roc_auc_score(y[te], p):.3f}", flush=True)
         frames.append(oof_frame(df, te, r, k, p, thr, epochs=ep))
         del model
         if device.type == "mps":

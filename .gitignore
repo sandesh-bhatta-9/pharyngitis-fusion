@@ -11,3 +11,5 @@ __pycache__/
 .DS_Store
 .vscode/
 logs/
+data/processed_tie_*/*
+!data/processed_tie_*/folds.csv

@@ -1,0 +1,85 @@
+# Tie-rule sensitivity analysis (generated from default.yaml): ties = nonbacterial.
+# Main config for the real PGUPharyngitis data.
+# Paths are relative to the project root.
+seed: 42
+
+paths:
+  raw_table: data/raw/excel.xlsx            # from PGUPharyngitis.zip (Figshare 28163513)
+  raw_images: data/raw/data_image_pharyngitis_nature   # one folder per patient: <ID>/<ID>.jpg
+  processed: data/processed_tie_nonbacterial
+  features: data/features
+  results: results/tie_nonbacterial
+  figures: figures/tie_nonbacterial
+
+# Column mapping. Run `python -m src.prepare_data --inspect` first and fix these names.
+columns:
+  id: patient_ID
+  age: Age
+  gender: Gender
+  # Columns that hold the physicians' diagnoses (matched case-insensitively).
+  diagnosis_regex: "^(diagnosis|diag|doctor|physician|dr)\\s*[#_-]?\\s*\\d+"
+  # Cell values that count as a "bacterial" vote. Every other non-empty value counts as non-bacterial.
+  bacterial_values: ["bacterial"]   # paper: Diagnosis #1..#9 = "Bacterial" / "Nonbacterial"
+  # "auto" = every column that is not id/age/gender/diagnosis/meta/ignore. Or give an explicit list.
+  symptoms: auto
+  # Site / device columns: used only for stratification and subgroup analysis, never as model inputs.
+  meta: [city, phone]
+  ignore: []
+  # Majority-vote ties (e.g. 2 of 4): bacterial | nonbacterial | drop
+  # PGUPharyngitis: 100 of 741 patients are ties; prevalence is 27.7% (bacterial) vs 14.2% (nonbacterial).
+  # Pre-register the choice in paper/analysis_plan.md and run the other rules as sensitivity analyses.
+  tie_rule: nonbacterial
+  # Patients removed before analysis, with the reason (kept in the audit report).
+  # Three pairs share an identical photo (pHash distance 0) but have different age/gender/symptoms,
+  # so the image cannot be assigned to either record: exclude both members of each pair.
+  exclude_ids: ["19", "23", "218", "256", "301", "305"]
+
+# Centor/McIsaac items -> symptom column names. Leave null if the item is not in the data.
+# PGUPharyngitis has fever (Pyrexia) and cough but no exudate or lymph-node items -> "modified" score.
+centor:
+  fever: Pyrexia
+  cough: Cough
+  exudate: null
+  nodes: null
+
+cv:
+  outer_folds: 5
+  repeats: 5
+  inner_folds: 3
+  # The data has no city column; the phone model comes from EXIF (Xiaomi 44% vs Samsung 15% bacterial).
+  stratify_meta: [exif_phone]
+
+image:
+  short_side: 256
+  crop: 224
+
+features:
+  backbones:
+    - convnext_tiny.fb_in22k_ft_in1k
+    - vit_small_patch14_dinov2.lvd142m
+  n_aug: 10
+  batch_size: 32
+
+fusion:
+  proj_dim: 128
+  epochs_max: 60
+  batch_size: 32
+  weight_decay: 1.0e-4
+  modality_dropout: 0.2
+  grid:
+    lr: [1.0e-3, 3.0e-4]
+    dropout: [0.3, 0.5]
+    aux_weight: [0.0, 0.3]
+
+finetune:
+  models: [densenet121, mobilenetv3_large_100, convnext_tiny.fb_in22k_ft_in1k]
+  epochs: 30
+  patience: 7
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  batch_size: 16
+  val_frac: 0.15
+
+# Model names used for the pre-registered hypotheses (filled in after E1/E2 smoke runs).
+hypotheses:
+  proposed: gated_convnext_tiny
