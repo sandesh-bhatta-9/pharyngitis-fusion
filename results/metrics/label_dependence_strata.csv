@@ -1,0 +1,5 @@
+model,auc_all,auc_unanimous,auc_split,auc_within_phone,spearman_vote_share,n_unanimous,n_split
+sym_lr,0.5736,0.6887,0.5644,0.534,0.0991,230,505
+sym_lgbm,0.5914,0.623,0.5801,0.55,0.1338,230,505
+centor,0.4369,0.3882,0.4428,0.442,-0.08,230,505
+phone,0.6727,0.67,0.6507,0.4884,0.2821,230,505
