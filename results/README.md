@@ -1,6 +1,6 @@
 # Results
 
-Everything here is produced by `scripts/run_all.sh` and `scripts/run_extra.sh`. All tables and figures are
+Everything here is produced by `scripts/run_all.sh`, `scripts/run_extra.sh` and `scripts/run_mitigation.sh`. All tables and figures are
 computed from the out-of-fold predictions, without retraining.
 
 ## `oof/` - out-of-fold predictions, one CSV per model
@@ -30,6 +30,16 @@ Columns: `patient_id, repeat, fold, y` (majority-vote label), `y_soft` (share of
 | `label_dependence_*.csv` | Unanimous vs split votes, AUC within phone, residual test, knock-outs |
 | `site_*.csv` | Phone identification, within-phone and cross-phone results, large images, photo statistics |
 | `gate_*.csv`, `shap_importance.csv`, `subgroups_*.csv` | Explainability and subgroups |
+| `mitigation_summary.csv` | Pooled, deconfounded (with 95% CI) and within-phone AUC of main and mitigation models; phone-probe AUC |
+| `mitigation_tests.csv` | Corrected t-tests of each mitigation method against its reference, and main-model pairs, on both metrics |
+| `mitigation_phone_probe.csv` | Phone-identification AUC of a linear probe per method, backbone and fold |
+| `mitigation_cross.csv` | Cross-phone transfer with colour constancy and per-phone standardisation |
+
+## `mitigation/oof/`
+
+Out-of-fold predictions of the mitigation models, `mit_<method>_<backbone>.csv` (same columns; `thr` is empty because only
+AUC is reported). Methods: `base`, `sog` (colour constancy), `adjust`, `reweight`, `center`, `leace`, `leace_rw`,
+`sog_leace_rw`, `mlp`, `adv<lambda>`.
 
 ## `tie_nonbacterial/`, `tie_drop/`
 

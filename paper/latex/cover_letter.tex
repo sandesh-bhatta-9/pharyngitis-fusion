@@ -1,5 +1,6 @@
 \documentclass[11pt]{letter}
 \usepackage[a4paper,margin=2cm,top=1.6cm,bottom=1.6cm]{geometry}
+\usepackage{amsmath}
 \usepackage[hidelinks]{hyperref}
 \signature{Sandesh Bhatta\\
 Department of Computer Science\\
@@ -9,18 +10,21 @@ Albany, New York, USA\\
 \address{}
 \begin{document}
 \begin{letter}{The Editor-in-Chief\\
-\textit{Computers in Biology and Medicine}}
+\textit{Computer Methods and Programs in Biomedicine}}
 \opening{Dear Editor,}
 
-I am submitting the manuscript ``Device and site shortcuts dominate smartphone throat-image classification of bacterial pharyngitis: a multimodal benchmark on PGUPharyngitis'' for consideration as a full-length article in \textit{Computers in Biology and Medicine}.
+I am submitting the manuscript ``Recognising the phone, not the throat: deconfounded evaluation and shortcut mitigation for smartphone pharyngitis classification'' for consideration as a full-length article in \textit{Computer Methods and Programs in Biomedicine}.
 
-Smartphone photographs of the throat are being studied as a way to reduce unnecessary antibiotic prescribing for sore throat, and the journal has published work in this area (Yoo et al., 2020). PGUPharyngitis, released in \textit{Scientific Data} in 2025, is the largest public dataset of such photographs, with 742 patients from two cities, two phone models and labels from four to nine physicians per patient. Its published image-only models reach an AUC of 0.645.
+Multi-site medical image datasets often link the acquisition site to the outcome, and models can then score well by recognising the site. PGUPharyngitis, released in \textit{Scientific Data} in 2025, is the largest public dataset of smartphone throat photographs (742 patients, two cities, one phone model per city), and bacterial prevalence differs threefold between its two phones. I show that the phone alone predicts the physicians' label with an AUC of 0.67, above the published deep-learning baseline, and that image features identify the phone with an AUC of 0.99.
 
-I set out to add the recorded symptoms to the images and found that most of the image performance comes from recognising which phone, and therefore which city, took the photograph. Bacterial prevalence was 44\% on one phone and 15\% on the other. Knowing only the phone predicts the physicians' label with an AUC of 0.67, and 18 simple colour statistics reach 0.646, matching the published deep-learning baseline. Image features identify the phone with an AUC of 0.99. Within a single phone, image AUC falls to about 0.59, and models trained on one phone score 0.50--0.53 on the other. Fusing symptoms with images, including through a gated fusion network, never improves on the image alone.
+The manuscript then makes two methodological contributions that apply to any multi-site imaging dataset:
+\begin{itemize}
+\item \textit{A deconfounded AUC.} Weighting each patient by $P(y)/P(y \mid \text{site})$ makes the label independent of the site, so any site-only predictor scores exactly 0.5 while comparisons across sites are kept. Under this metric, image, symptom and fusion models all fall from about 0.70 to 0.52--0.58, and the 0.11 AUC advantage of images over symptoms disappears.
+\item \textit{A controlled comparison of shortcut mitigation.} Thirteen variants of six method families (colour constancy, per-site standardisation, linear concept erasure, reweighting, covariate adjustment and adversarial training) were tested on two backbones under one nested cross-validation protocol, each with a probe of the site information left behind. Methods that remove the site lower the pooled AUC to the deconfounded level but none raises the deconfounded AUC, and adversarial training lowers AUC while leaving the site 97--98\% identifiable, which would be mistaken for successful debiasing without a probe.
+\end{itemize}
+The study also provides the first multimodal (image plus symptom) benchmark on this dataset. All code, fold assignments and out-of-fold predictions are public, and the new metric and probes can be computed for any model from its predictions. The study follows TRIPOD+AI, and the completed checklist is included.
 
-The manuscript contributes the first multimodal benchmark on this dataset, compared under one repeated, nested cross-validation protocol with corrected statistical tests, and a set of shortcut analyses that other smartphone-imaging studies can reuse. The code, fold assignments and out-of-fold predictions are publicly available, so future work on PGUPharyngitis can be compared directly. The study is reported following TRIPOD+AI, and the completed checklist is included.
-
-I believe the findings will interest readers working on medical image analysis and clinical decision support, because the same site confounding can affect any dataset collected with different devices at different sites.
+I believe the work fits the journal's focus on computational methods for biomedical data, because it gives readers a simple evaluation tool and evidence on which debiasing methods do and do not work when site and outcome are confounded.
 
 I confirm that this manuscript is original, has not been published, and is not under consideration elsewhere. I am the sole author. The study received no specific funding and I have no competing interests. It uses only the anonymised public dataset, whose collection was approved by a research ethics committee with informed consent. The use of AI-assisted tools is declared in the manuscript.
 

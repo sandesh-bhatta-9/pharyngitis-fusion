@@ -7,6 +7,7 @@ Subcommands:
   ablation     AUC with 95% CI per model, as a dot plot (E3)
   subgroups    forest plot of AUC by subgroup for one model (E4)
   shortcut     paper Figure 3: AUC overall vs within phone (A) and cross-phone transfer (B)
+  mitigation   paper Figure 4: pooled vs deconfounded AUC for main models (A) and mitigation methods (B)
 
 Usage:
     python -m src.figures roc --models gated_convnext_tiny sym_lgbm img_lr_convnext_tiny
@@ -225,11 +226,62 @@ def fig_shortcut(cfg, out):
     fig.tight_layout()
     save(fig, out, "fig3_site_shortcut")
 
+DECONF_MODELS = [("phone", "Phone only"), ("lowlevel", "Photo statistics"), ("sym_lgbm", "Symptoms (LightGBM)"),
+                 ("img_lr_convnext_tiny", "Image, ConvNeXt"), ("img_lr_vit_small_patch14_dinov2", "Image, DINOv2"),
+                 ("stack_vit_small_patch14_dinov2", "Stacked fusion, DINOv2"),
+                 ("gated_vit_small_patch14_dinov2", "Gated fusion, DINOv2"),
+                 ("ft_convnext_tiny", "Fine-tuned ConvNeXt*")]
+MITIGATION_METHODS = [("base", "None (reference)"), ("sog", "Colour constancy"), ("adjust", "Phone as covariate"),
+                      ("reweight", "Reweighting"), ("center", "Per-phone standardisation"),
+                      ("leace", "Concept erasure (LEACE)"), ("leace_rw", "LEACE + reweighting"),
+                      ("sog_leace_rw", "Colour + LEACE + reweighting"), ("mlp", "Network, no adversary"),
+                      ("adv1", "Adversarial, \u03bb = 1"), ("adv10", "Adversarial, \u03bb = 10")]
+
+
+def _dumbbell(ax, rows, note=None):
+    ys = np.arange(len(rows))[::-1]
+    for i, (y_, (lab, tot, dec, lo, hi, extra)) in enumerate(zip(ys, rows)):
+        ax.plot([dec, tot], [y_, y_], color=GRID, lw=2.2, zorder=1)
+        ax.hlines(y_, lo, hi, color=SERIES[1], lw=1.2, alpha=0.6, zorder=2)
+        ax.scatter(tot, y_, color=SERIES[0], s=30, zorder=3, label="Pooled AUC" if i == 0 else None)
+        ax.scatter(dec, y_, color=SERIES[1], s=30, zorder=3, label="Deconfounded AUC (95% CI)" if i == 0 else None)
+        if extra is not None:
+            ax.text(0.765, y_, f"{extra:.3f}", va="center", ha="right", fontsize=7, color=MUTED)
+    if note:
+        ax.text(0.765, ys[0] + 0.55, note, va="bottom", ha="right", fontsize=6.5, color=MUTED)
+    ax.axvline(0.5, color=REF, ls="--", lw=1)
+    ax.set_yticks(ys, [r[0] for r in rows], color=INK)
+    ax.grid(axis="y", visible=False)
+    ax.set_xlim(0.42, 0.77)
+    ax.set_ylim(-0.7, len(rows) - 0.05)
+    ax.set_xlabel("AUC")
+
+
+def fig_mitigation(cfg, out, backbone="vit_small_patch14_dinov2"):
+    """Panel A: pooled vs deconfounded AUC of the main models. Panel B: the same for each mitigation method."""
+    summ = pd.read_csv(cfg["paths"]["metrics"] / "mitigation_summary.csv").set_index("model")
+    row = lambda k, lab, probe=False: (lab, summ.loc[k, "auc"], summ.loc[k, "auc_deconf"],  # noqa: E731
+                                       summ.loc[k, "auc_deconf_lo"], summ.loc[k, "auc_deconf_hi"],
+                                       summ.loc[k, "phone_id_auc"] if probe and k in summ.index else None)
+    rows_a = [row(k, lab) for k, lab in DECONF_MODELS if k in summ.index]
+    rows_b = [row(f"mit_{m}_{backbone}", lab, probe=True) for m, lab in MITIGATION_METHODS
+              if f"mit_{m}_{backbone}" in summ.index]
+    rows_b = [(lab, t, d, lo, hi, None if (e is None or np.isnan(e)) else e) for lab, t, d, lo, hi, e in rows_b]
+    fig, (a, b) = plt.subplots(1, 2, figsize=(7.6, 3.9), gridspec_kw={"width_ratios": [1, 1.1]})
+    _dumbbell(a, rows_a)
+    a.set_title("A  Main models", loc="left", fontsize=8.5)
+    fig.legend(*a.get_legend_handles_labels(), loc="lower center", fontsize=7, ncol=2, bbox_to_anchor=(0.5, -0.02))
+    _dumbbell(b, rows_b, note="phone ID AUC")
+    b.set_title("B  Shortcut mitigation (DINOv2 features)", loc="left", fontsize=8.5, pad=14)
+    a.set_title("A  Main models", loc="left", fontsize=8.5, pad=14)
+    fig.tight_layout(rect=(0, 0.05, 1, 1))
+    save(fig, out, "fig_mitigation")
+
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     add_config_arg(ap)
-    ap.add_argument("kind", choices=["roc", "calibration", "dca", "ablation", "subgroups", "shortcut"])
+    ap.add_argument("kind", choices=["roc", "calibration", "dca", "ablation", "subgroups", "shortcut", "mitigation"])
     ap.add_argument("--models", nargs="*", default=[])
     ap.add_argument("--model", help="for subgroups")
     ap.add_argument("--labels", nargs="*", default=[], help="display names, same order as --models")
@@ -241,6 +293,8 @@ def main():
     style()
     if args.kind == "shortcut":
         fig_shortcut(cfg, out)
+    elif args.kind == "mitigation":
+        fig_mitigation(cfg, out)
     elif args.kind == "subgroups":
         fig_subgroups(cfg, args.model or args.models[0], out)
     else:
