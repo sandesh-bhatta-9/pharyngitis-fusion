@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this code, fold assignments or predictions, please cite it as below."
-title: "Device and site shortcuts in smartphone pharyngitis AI: code for a multimodal benchmark on PGUPharyngitis"
+title: "Recognising the phone, not the throat: code for deconfounded evaluation and shortcut mitigation in smartphone pharyngitis classification"
 authors:
   - given-names: Sandesh
     family-names: Bhatta
@@ -14,6 +14,7 @@ keywords:
   - smartphone imaging
   - shortcut learning
   - multimodal fusion
+  - concept erasure
   - deep learning
 references:
   - type: dataset

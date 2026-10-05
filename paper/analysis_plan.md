@@ -30,3 +30,19 @@ that shape the results, so readers can check them against the code.
 
 Phone-only, image-size and photo-statistics baselines; phone identification; AUC within phone; models trained and
 tested within one phone; cross-phone transfer; large images only; shuffled-image control.
+
+## Addendum (2026-10-05): deconfounded evaluation and shortcut mitigation
+
+Added after the main results were known, and therefore exploratory. Code: `src/mitigate.py`, run by
+`scripts/run_mitigation.sh`.
+
+- **Deconfounded AUC:** AUC with each patient weighted by P(y) / P(y | phone group), estimated on the whole cohort, so the
+  label is independent of the phone and any phone-only score gets 0.5. Reported per fold and per repeat (pooled), with a
+  weighted patient-level bootstrap CI.
+- **Mitigation (frozen DINOv2 and ConvNeXt embeddings, same outer folds and nested tuning as `img_lr`):** Shades-of-Gray
+  colour constancy, phone as covariate, reweighting by P(y) / P(y | phone), per-phone standardisation, LEACE, LEACE +
+  reweighting, colour constancy + LEACE + reweighting, and a one-hidden-layer network with a gradient-reversal phone
+  head (lambda in {0, 0.3, 1, 3, 10}, fixed in advance; lambda = 0 is the control).
+- **Leakage probe:** linear probe identifying Xiaomi vs Samsung from the transformed test features in every outer fold.
+- **Tests:** corrected resampled t-test (two-sided, uncorrected) on fold-level pooled and deconfounded AUC against the
+  reference model of the same backbone.

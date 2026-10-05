@@ -1,6 +1,6 @@
 # Manuscript (LaTeX, Elsevier `elsarticle`)
 
-`main.tex` is the manuscript for *Computers in Biology and Medicine*; `references.bib` holds the references and
+`main.tex` is the manuscript for *Computer Methods and Programs in Biomedicine*; `references.bib` holds the references and
 `figures/` the figures (copied from the repository's `figures/` folder).
 
 ## Build the PDF
