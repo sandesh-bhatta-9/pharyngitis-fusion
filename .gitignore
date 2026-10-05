@@ -23,3 +23,5 @@ paper/latex/*.log
 paper/latex/*.out
 paper/latex/*.spl
 paper/*.zip
+*.egg-info/
+build/

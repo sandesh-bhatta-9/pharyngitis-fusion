@@ -36,13 +36,13 @@
             country={USA}}
 
 \begin{abstract}
-\textit{Background and Objective:} Smartphone throat photographs could help separate bacterial from non-bacterial pharyngitis. On the public PGUPharyngitis dataset (742 patients, two cities, one phone model per city), image models reach AUCs near 0.65--0.70, but bacterial prevalence differs threefold between the two phones. We asked how much of this performance comes from recognising the phone, how to measure performance without that shortcut, and whether standard mitigation methods recover a device-independent signal.
+\textit{Background and Objective:} Smartphone throat photographs could help separate bacterial from non-bacterial pharyngitis. On the public PGUPharyngitis dataset (742 patients, two cities, one phone model per city), image models reach AUCs near 0.65--0.70, but bacterial prevalence differs threefold between the phones. We asked how much of this performance comes from recognising the phone, how to measure performance without that shortcut, and whether mitigation methods recover a device-independent signal.
 
-\textit{Methods:} We analysed 735 patients with physician-consensus labels in 5-fold cross-validation repeated five times with nested tuning. We benchmarked symptom models, frozen and fine-tuned image networks and five fusion methods, and audited them with phone-only and photo-statistics baselines, phone identification, and within- and cross-phone evaluation. We introduce a deconfounded AUC that reweights patients so the label is independent of the phone; any phone-only predictor scores 0.5. We then compared 13 mitigation variants on two backbones: colour constancy, per-phone standardisation, linear concept erasure (LEACE), reweighting, covariate adjustment and adversarial training, each with a probe that measures how much phone information remains.
+\textit{Methods:} We analysed 735 patients with physician-consensus labels in repeated, nested 5-fold cross-validation, benchmarking symptom, image and fusion models against phone-only baselines, phone identification and within- and cross-phone evaluation. We introduce a deconfounded AUC that reweights patients so the label is independent of the phone; any phone-only predictor scores 0.5. We validated it by simulation and by resampling the data to set the prevalence gap, and compared it with the covariate-adjusted AUC. We then compared 13 mitigation variants on frozen features (colour constancy, per-phone standardisation, concept erasure (LEACE), reweighting, covariate adjustment, adversarial training) and end-to-end GroupDRO and adversarial fine-tuning, each with a probe of the phone information that remains.
 
-\textit{Results:} The best pooled AUC was 0.703 (stacked image--symptom fusion); the phone alone reached 0.673, and image features identified the phone with AUC 0.99. Deconfounded AUCs of image, symptom and fusion models were 0.52--0.58 (DINOv2 image 0.558, 95\% CI 0.51--0.61; phone only 0.496). The 0.11 pooled-AUC advantage of images over symptoms ($p < 0.001$) shrank to 0.01 ($p = 0.75$). Per-phone standardisation and LEACE removed phone information (probe AUC from 0.99 to 0.51--0.52) and lowered pooled AUC to 0.54--0.58, but no method changed deconfounded AUC (all $p > 0.19$). Adversarial training lowered pooled AUC while the phone stayed identifiable (probe AUC 0.97--0.98).
+\textit{Results:} The best pooled AUC was 0.703 (image--symptom fusion); the phone alone reached 0.673, and image features identified the phone with AUC 0.99. In simulation the deconfounded AUC was unbiased (bias $\leq 0.001$) while pooled AUC was inflated by up to 0.24; on resampled data it stayed within 0.02 of the shortcut-free AUC as pooled AUC rose from 0.54 to 0.78. Deconfounded AUCs of image, symptom and fusion models were 0.52--0.58 (DINOv2 image 0.558, 95\% CI 0.51--0.61; phone only 0.496), and the 0.11 advantage of images over symptoms shrank to 0.01 ($p = 0.75$). Standardisation and LEACE removed the phone (probe AUC 0.99 to 0.51--0.52) and lowered pooled AUC to 0.54--0.58, but no method changed deconfounded AUC (all $p > 0.19$). Adversarial training lowered pooled AUC while the phone stayed identifiable (probe AUC 0.97--1.00).
 
-\textit{Conclusions:} Most of the apparent image performance on PGUPharyngitis is a device shortcut, and removing it reveals a weak signal (AUC about 0.56) that current mitigation methods do not improve. Deconfounded AUC, phone-only baselines and leakage probes should be reported for multi-site smartphone imaging models.
+\textit{Conclusions:} Most apparent image performance on PGUPharyngitis is a device shortcut; the remaining signal (AUC about 0.56) is weak and not improved by current mitigation methods. Deconfounded AUC, site-only baselines and leakage probes, released as an open-source package, should be reported for multi-site imaging models.
 \end{abstract}
 
 \begin{graphicalabstract}
@@ -51,10 +51,10 @@
 
 \begin{highlights}
 \item The phone model alone predicts expert pharyngitis labels with AUC 0.67.
-\item A deconfounded AUC, under which any phone-only model scores 0.5, is introduced.
+\item A deconfounded AUC scores phone-only models 0.5 and recovers the shortcut-free AUC.
 \item Deconfounded, image and fusion models fall from about 0.70 to 0.52--0.58.
 \item Concept erasure removes the phone signal but recovers no throat signal.
-\item Adversarial debiasing lowers AUC yet leaves the phone 97\% identifiable.
+\item Adversarial debiasing lowers AUC yet leaves the phone 97--100\% identifiable.
 \end{highlights}
 
 \begin{keyword}
@@ -78,10 +78,10 @@ We set out to build a symptom-aware image model and found that pooled cross-vali
 
 This study makes four contributions:
 \begin{enumerate}
-\item \textit{A shortcut audit of PGUPharyngitis.} The phone alone, or 18 global colour statistics, match the published image baseline; image features identify the phone almost perfectly; and image performance largely disappears within a phone and across phones.
-\item \textit{A deconfounded AUC.} Weighting each patient by $P(y)/P(y \mid \text{site})$ makes the label independent of the site, so any predictor that uses only the site scores 0.5, while comparisons between patients from different sites are kept. Under this metric the 0.11 AUC advantage of images over symptoms disappears.
-\item \textit{A controlled comparison of shortcut mitigation.} Thirteen variants of six method families were tested on two backbones under the same nested protocol, each with a probe of how much phone information remains. Methods that remove the phone signal lower the pooled AUC to the deconfounded level but do not raise the deconfounded AUC, and adversarial training gives a misleading impression of success.
-\item \textit{A multimodal benchmark with open code.} Symptom-only, image-only, clinical-score and five fusion approaches, including a gated cross-modal network, are compared under one repeated, nested cross-validation protocol. Code, folds and out-of-fold predictions are released so that future work can report the same metrics.
+\item \textit{A shortcut audit of PGUPharyngitis.} The phone alone, or 18 global colour statistics, match the published image baseline; image features identify the phone almost perfectly; image performance largely disappears within a phone and across phones; and the two sites differ in how patients were labelled, not only in prevalence.
+\item \textit{A validated deconfounded AUC.} Weighting each patient by $P(y)/P(y \mid \text{site})$ makes the label independent of the site, so any predictor that uses only the site scores 0.5, while comparisons between patients from different sites are kept. In a simulation with a known answer and on the dataset resampled to different prevalence gaps, it recovered the shortcut-free AUC while pooled AUC rose with the gap; we compare it with the covariate-adjusted AUC of epidemiology. Under this metric the 0.11 AUC advantage of images over symptoms disappears.
+\item \textit{A controlled comparison of shortcut mitigation.} Thirteen variants of six method families were tested on two backbones under the same nested protocol, together with end-to-end GroupDRO and adversarial fine-tuning, each with a probe of how much phone information remains. Methods that remove the phone signal lower the pooled AUC to the deconfounded level but do not raise the deconfounded AUC, and adversarial training gives a misleading impression of success.
+\item \textit{A multimodal benchmark with open code.} Symptom-only, image-only, clinical-score and five fusion approaches, including a gated cross-modal network, are compared under one repeated, nested cross-validation protocol. Code, folds and out-of-fold predictions are released, and the audit metrics are packaged so that any multi-site study can compute them from its predictions.
 \end{enumerate}
 
 %% ---------------------------------------------------------------------------------------------
@@ -97,6 +97,8 @@ This study makes four contributions:
 \paragraph{Shortcut learning and site confounding} Shortcut learning occurs when a model relies on cues that are predictive in the training distribution but not causally related to the target \cite{geirhos2020shortcut}. In medical imaging, such cues include the hospital, scanner, positioning markers and patient metadata \cite{zech2018pneumonia,degrave2021covid,badgeley2019hip}. Hidden stratification, where performance is driven by an easy subgroup, can make overall metrics misleading \cite{oakdenrayner2020hidden}. Methodological reviews recommend evaluation across sites, explicit confounder baselines and reporting of variance across splits \cite{varoquaux2022failures}. Brown et al.\ proposed testing whether a model's reliance on a sensitive attribute changes its fairness \cite{brown2023shortcut}, and Ong Ly et al.\ showed that shortcut learning lowers performance on external data and proposed estimating generalisation without it \cite{ongly2024shortcut}. We apply these recommendations to throat imaging.
 
 \paragraph{Shortcut mitigation} Methods for removing an unwanted attribute fall into a few families. Colour constancy normalises the illuminant and camera colour cast of each image; Shades of Gray \cite{finlayson2004shades} improved dermoscopy classification across acquisition conditions \cite{barata2015colour}. Feature harmonisation removes site-specific location and scale, as ComBat does for batch effects \cite{johnson2007combat}. Linear concept erasure removes all linearly available information about an attribute; LEACE does so in closed form with the smallest possible change to the features \cite{belrose2023leace}. Reweighting or resampling the training data so that label and nuisance are independent targets the shortcut directly \cite{makar2022causally}. Adversarial training with a gradient-reversal layer penalises representations from which the domain can be predicted \cite{ganin2016dann}, although in text data the removed attribute could still be recovered from the learned representation \cite{elazar2018adversarial}. We compare these families on the same data and measure how much site information each leaves behind.
+
+\paragraph{Evaluation under confounding} Epidemiology has long adjusted ROC analysis for covariates. The covariate-adjusted ROC curve of Janes and Pepe compares each case only with controls that share its covariate value, and its area is a weighted average of within-stratum AUCs \cite{janes2008adjusting}. Applied to the acquisition site, this removes a site shortcut but also discards every comparison between sites, so a model whose scores are shifted by site is not penalised. Inverse-probability weighting of the evaluation sample keeps those comparisons; we report both.
 
 %% ---------------------------------------------------------------------------------------------
 \section{Materials and methods}
@@ -185,14 +187,9 @@ All models used the same stratified 5-fold cross-validation repeated five times 
 
 \paragraph{Standard fusion} \textit{Late fusion} averaged the symptom and image logistic-regression probabilities. \textit{Early fusion} fitted one logistic regression on the tabular inputs plus a PCA projection of the image embedding (16 or 64 components). \textit{Stacking} fitted a logistic regression on the logits of inner out-of-fold symptom and image predictions.
 
-\paragraph{Gated cross-modal fusion} The image embedding passes through layer normalisation, dropout and a linear layer to a 128-dimensional vector $h_{\text{img}}$; the 22 tabular inputs pass through a 22--64--128 perceptron to $h_{\text{sym}}$. A gate computes a scalar weight per patient,
-\begin{equation}
-g = \sigma\!\left(W [h_{\text{img}}; h_{\text{sym}}] + b\right), \qquad z = g\, h_{\text{img}} + (1-g)\, h_{\text{sym}},
-\label{eq:gate}
-\end{equation}
-and a dropout--linear head maps $z$ to a logit. Auxiliary image-only and symptom-only heads add their losses with weight $\lambda$, and modality dropout (probability 0.2 per branch, never both) randomly removes one branch during training. Training used the soft label as target in class-weighted binary cross-entropy, AdamW with weight decay $10^{-4}$, batch 32 and a cosine schedule over 60 epochs. Each epoch drew one of the ten cached augmentation embeddings per patient. The inner cross-validation selected the learning rate $\{10^{-3}, 3 \times 10^{-4}\}$, dropout $\{0.3, 0.5\}$, $\lambda \in \{0, 0.3\}$ and the number of epochs (maximum of the smoothed mean inner AUC curve); the model was then retrained on the full training part. Ablations replaced the gate by concatenation or by FiLM \cite{perez2018film}, used hard labels, removed the auxiliary heads, removed modality dropout, or removed fever and cough from the inputs.
+\paragraph{Gated cross-modal fusion} Image and symptom embeddings (128 dimensions each) were combined by a learned per-patient gate $g \in (0, 1)$, $z = g\, h_{\text{img}} + (1-g)\, h_{\text{sym}}$, with auxiliary single-modality heads, modality dropout and the physicians' vote share as a soft target; hyperparameters and the number of epochs were chosen by inner cross-validation. Architecture details and ablations (concatenation, FiLM \cite{perez2018film}, hard labels, no auxiliary heads, no modality dropout) are in Supplementary Section S4.
 
-\subsection{Shortcut and label-dependence analyses}
+\subsection{Shortcut audit}
 \label{sec:shortcut-methods}
 
 \begin{enumerate}
@@ -200,10 +197,9 @@ and a dropout--linear head maps $z$ to a logit. Auxiliary image-only and symptom
 \item \textit{Within-phone evaluation:} for each model, AUC computed separately within the Samsung, Xiaomi and unknown-phone strata of the out-of-fold predictions and averaged weighted by stratum size. A phone-only model scores 0.5 by construction.
 \item \textit{Within-phone training:} models trained and tested inside one phone (5-fold $\times$ 5 repeats).
 \item \textit{Cross-phone transfer:} models trained on all patients of one phone and tested on the other, with patient-level bootstrap confidence intervals (1,000 resamples).
-\item \textit{Large images only:} within-phone AUC restricted to photographs whose original short side was at least 500 pixels.
-\item \textit{Shuffled-image control:} gated fusion trained after permuting image embeddings across patients; with no leakage it should lose the image signal.
-\item \textit{Label dependence:} AUC on unanimous versus split votes; Spearman correlation with the vote share; and a residual test in which DINOv2 embeddings predict the out-of-fold errors of the symptom model (ridge regression, 5-fold cross-validated correlation, 500 permutations).
+\item \textit{Site differences in patients and labelling:} number of raters, agreement, ties, prevalence under each tie rule and symptom rates, compared between phones (Mann--Whitney and chi-square tests).
 \end{enumerate}
+Further controls (large photographs only, shuffled images, label dependence) are reported in Supplementary Section S7.
 
 \subsection{Deconfounded AUC}
 \label{sec:deconf}
@@ -220,6 +216,10 @@ estimated on the whole cohort. In the weighted cohort every phone group has the 
 \end{equation}
 where $p_i$ is the out-of-fold prediction. A score that depends only on $s$ gets exactly 0.5: pairs within a phone are ties, and for every pair of phones $(a, b)$ the weighted number of bacterial-$a$/non-bacterial-$b$ pairs equals the number of bacterial-$b$/non-bacterial-$a$ pairs, so a site offset gains as many pairs as it loses. Unlike within-phone AUC, the metric keeps pairs from different phones and so rewards scores that rank patients consistently across phones. The weights use labels and are an evaluation device only; they are never used to fit the audited models. Because the weights of Eq.~\eqref{eq:weights} are fixed for the cohort, the phone-only model, whose per-phone rates vary slightly across training folds, scores close to but not exactly 0.5. We computed $\mathrm{AUC}_{w}$ per test fold and on the pooled predictions of each repeat, with 1,000 weighted patient-level bootstrap resamples per repeat for confidence intervals.
 
+\paragraph{Estimand and relation to the adjusted AUC} Because the weights change only the joint distribution of label and site and leave the distribution of images within each label--site group unchanged, $\mathrm{AUC}_w$ estimates the AUC the same model would reach in a population with the same sites and site sizes in which every site had the overall prevalence. We also report the covariate-adjusted AUC of Janes and Pepe \cite{janes2008adjusting}, $\mathrm{AUC}_{\text{adj}} = \sum_s \hat P(s \mid y = 1)\, \mathrm{AUC}_s$, the within-site AUCs averaged over the sites of the positive cases. Both give 0.5 to a site-only score. They differ for a model that combines real signal with a site offset: $\mathrm{AUC}_{\text{adj}}$ ignores the offset, whereas $\mathrm{AUC}_w$ counts it against the model, as it would count in a population where the site carries no information.
+
+\paragraph{Validation} We checked both metrics where the answer is known. (i) \textit{Simulation:} two sites (700 patients, 45\% at site B, overall prevalence 0.28), a marker with true AUC 0.60, and a site signature that identifies the site (standardised mean difference 3). The prevalence gap between sites was set to 0, 0.1, 0.2, 0.3 or 0.4. In each of 500 replicates per gap, a logistic regression trained on marker and signature in a confounded sample was scored on a confounded test sample with every metric, and on 20,000 patients from the same sites without a prevalence gap; the AUC on this unconfounded sample is the target. The marker alone and the signature alone were scored the same way. (ii) \textit{Resampling PGUPharyngitis:} 200 patients per phone were drawn so that the bacterial rate differed between phones by 0 to 0.4 (overall prevalence 0.25; the full data have a gap of 0.29), 20 times per gap, and each sample was analysed with stratified 5-fold cross-validation of the phone-only, image (DINOv2), image-after-LEACE and symptom models. At a gap of 0 the phone carries no label information, so the image model's AUC there is a shortcut-free reference.
+
 \subsection{Shortcut mitigation}
 \label{sec:mitigation}
 
@@ -231,50 +231,52 @@ All mitigation methods start from the frozen DINOv2 and ConvNeXt embeddings, use
 \item \textit{Per-phone standardisation:} each embedding dimension was standardised with the mean and SD of the patient's phone group in the training part, a location--scale harmonisation similar to ComBat without its empirical-Bayes shrinkage \cite{johnson2007combat}.
 \item \textit{Concept erasure:} LEACE \cite{belrose2023leace} was fitted on the training part to remove all linear information about the phone group (one-hot) from the embeddings, alone or combined with reweighting and colour constancy.
 \item \textit{Adversarial training:} a network with one hidden layer (128 units, ReLU, dropout 0.3) was trained with a label head and a phone head behind a gradient-reversal layer \cite{ganin2016dann}, with adversarial weight $\lambda \in \{0.3, 1, 3, 10\}$ ramped up over training. The same network with $\lambda = 0$ is the matched control. Training used Adam (learning rate $10^{-3}$, weight decay $10^{-3}$), 100 epochs, batch 64 and one of the ten cached augmentation embeddings per epoch.
+\item \textit{End-to-end fine-tuning:} ConvNeXt-Tiny was fine-tuned with the settings of the fine-tuned baselines (one repeat) using plain class-weighted cross-entropy (ERM), group distributionally robust optimisation over the six phone $\times$ label groups (GroupDRO, step size 0.01) \cite{sagawa2020dro}, or a gradient-reversal phone head on the pooled features ($\lambda$ ramped to 1). Early stopping used the deconfounded AUC of the validation split for all three, so that model selection did not reward the shortcut.
 \end{enumerate}
-To measure how much phone information each method leaves behind, a linear probe (standardised logistic regression, $C = 0.1$) was trained in every outer fold to identify Xiaomi versus Samsung from the transformed training features (for the networks, the hidden layer) and tested on the transformed test features. We also repeated the cross-phone transfer analysis with colour-constancy features and with per-phone standardisation, which needs no labels from the test phone. The adversarial weight was fixed in advance rather than tuned, because tuning on pooled AUC would favour the shortcut.
+To measure how much phone information each method leaves behind, a linear probe (standardised logistic regression, $C = 0.1$) was trained in every outer fold to identify Xiaomi versus Samsung from the transformed training features (for the networks, the hidden layer; for fine-tuned models, the pooled backbone features) and tested on the transformed test features. We also repeated the cross-phone transfer analysis with colour-constancy features and with per-phone standardisation, which needs no labels from the test phone. The adversarial weight was fixed in advance rather than tuned, because tuning on pooled AUC would favour the shortcut.
 
 \subsection{Statistics}
 
-For each model and repeat, the five test folds were pooled and AUC, PR-AUC, balanced accuracy, macro F1, sensitivity, specificity, Brier score and calibration slope were computed; we report the mean $\pm$ SD across repeats. AUC 95\% confidence intervals come from 1,000 patient-level bootstrap resamples within each repeat, averaged across repeats. Model comparisons used the Nadeau--Bengio corrected resampled $t$-test on the 25 fold-level AUC differences \cite{nadeau2003inference}, which accounts for overlapping training sets, and the DeLong test \cite{delong1988,sun2014fastdelong} within each repeat. Three hypotheses compared gated fusion with the best symptom-only model (H1), the best image-only model (H2) and the best standard fusion model (H3), one-sided, with Holm correction \cite{holm1979}; choosing the best comparator by its own performance makes these tests conservative. Decision curves \cite{vickers2006dca} show net benefit for threshold probabilities 0.05--0.60. Mitigation methods were compared with their reference image model on fold-level pooled and deconfounded AUC with the same corrected $t$-test, two-sided and uncorrected, as exploratory analyses. To check fairness, we report discrimination by sex and age band; no fairness corrections were applied.
+For each model and repeat, the five test folds were pooled and AUC, PR-AUC, balanced accuracy, macro F1, sensitivity, specificity, Brier score and calibration slope were computed; we report the mean $\pm$ SD across repeats. AUC 95\% confidence intervals come from 1,000 patient-level bootstrap resamples within each repeat, averaged across repeats. Model comparisons used the Nadeau--Bengio corrected resampled $t$-test on the 25 fold-level AUC differences \cite{nadeau2003inference}, which accounts for overlapping training sets, and the DeLong test \cite{delong1988,sun2014fastdelong} within each repeat. Three hypotheses compared gated fusion with the best symptom-only model (H1), the best image-only model (H2) and the best standard fusion model (H3), one-sided, with Holm correction \cite{holm1979}; choosing the best comparator by its own performance makes these tests conservative. Calibration and decision curves \cite{vickers2006dca} are reported in Supplementary Section S6. Mitigation methods were compared with their reference image model on fold-level pooled, deconfounded and adjusted AUC with the same corrected $t$-test, two-sided and uncorrected, as exploratory analyses. To check fairness, we report discrimination by sex and age band; no fairness corrections were applied.
 
-\subsection{Explainability and implementation}
+\subsection{Implementation}
 
-We computed SHAP values \cite{lundberg2017shap} for a LightGBM symptom model, summarised gate values by vote agreement, and produced Grad-CAM maps \cite{selvaraju2017gradcam} from a ConvNeXt-Tiny fine-tuned on all patients for the median best epoch count (seven), used only for visualisation. Code ran on an Apple M5 MacBook Air (16\,GB) with Python 3.11, PyTorch 2.14 (Metal backend), timm 1.0, scikit-learn 1.9 and LightGBM 4.7.
+Code ran on an Apple M5 MacBook Air (16\,GB) with Python 3.11, PyTorch 2.14 (Metal backend), timm 1.0, scikit-learn 1.9 and LightGBM 4.7. SHAP \cite{lundberg2017shap}, gate and Grad-CAM \cite{selvaraju2017gradcam} analyses are described in Supplementary Section S8. The deconfounded and adjusted AUC, the weights of Eq.~\eqref{eq:weights}, LEACE and the leakage probe are released as a small Python package (\texttt{shortcut\_audit}) that takes labels, scores and sites and needs no retraining.
 
 %% ---------------------------------------------------------------------------------------------
 \section{Results}
 \label{sec:results}
 
-\subsection{Cohort}
+\subsection{Cohort and differences between phones}
 
-The 735 patients had a mean age of 28.8 years (SD 17.1, range 2--83) and 373 (50.7\%) were male (Table~\ref{tab:cohort}). Bacterial prevalence differed threefold between phones: 14.9\% for Samsung photographs and 43.8\% for Xiaomi photographs.
+The 735 patients had a mean age of 28.8 years (SD 17.1, range 2--83) and 373 (50.7\%) were male (Table~\ref{tab:cohort}). Bacterial prevalence differed threefold between phones: 14.9\% for Samsung and 43.8\% for Xiaomi photographs. The phones also differed in how patients were recorded and labelled. Samsung patients were rated by more physicians (median 5 vs 4, $p = 0.006$), physicians agreed more often (mean agreement 0.66 vs 0.47, $p < 10^{-11}$), and tied votes were less common (6.3\% vs 23.1\%, $p < 10^{-9}$). Because ties were frequent among Xiaomi patients, the tie rule changed the prevalence gap: 29 percentage points with ties counted as bacterial, 12 with ties counted as non-bacterial. Samsung patients reported more symptoms (mean 2.7 vs 1.7, $p < 10^{-19}$; 8 of 20 symptoms differed after Bonferroni correction, Supplementary Table S1) yet had the lower bacterial prevalence. Age and sex did not differ.
 
 \begin{table}[!htbp]
 \centering
-\caption{Cohort characteristics (primary analysis, ties counted as bacterial).}
+\footnotesize
+\caption{Cohort characteristics overall and by phone (63 patients without EXIF phone are included in ``All'' only). Bacterial counts use the primary rule (ties bacterial) unless stated.}
 \label{tab:cohort}
-\begin{tabular}{@{}ll@{}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.2cm}ccc@{}}
 \toprule
-Characteristic & Value \\
+Characteristic & All & Samsung & Xiaomi \\
 \midrule
-Patients analysed & 735 (of 742) \\
-Age, mean (SD), range & 28.8 (17.1), 2--83 years \\
-Male & 373 (50.7\%) \\
-Physician diagnoses, total (median per patient) & 3,662 (5) \\
-Unanimous votes & 230 (31.3\%) \\
-Tied votes & 100 (13.6\%) \\
-Bacterial, majority vote & 205 (27.9\%) \\
-Samsung photographs: patients (bacterial) & 382 (57; 14.9\%) \\
-Xiaomi photographs: patients (bacterial) & 290 (127; 43.8\%) \\
-Phone unknown: patients (bacterial) & 63 (21; 33.3\%) \\
+Patients & 735 & 382 & 290 \\
+Age, mean (SD), years & 28.8 (17.1) & 28.8 (17.0) & 29.2 (17.6) \\
+Male & 373 (50.7\%) & 204 (53.4\%) & 142 (49.0\%) \\
+Physicians per patient, median (range) & 5 (3--9) & 5 (4--9) & 4 (3--6) \\
+Unanimous votes & 230 (31.3\%) & 154 (40.3\%) & 61 (21.0\%) \\
+Tied votes & 100 (13.6\%) & 24 (6.3\%) & 67 (23.1\%) \\
+Bacterial, ties bacterial (primary) & 205 (27.9\%) & 57 (14.9\%) & 127 (43.8\%) \\
+Bacterial, ties non-bacterial & 105 (14.3\%) & 33 (8.6\%) & 60 (20.7\%) \\
+Symptoms reported, mean & 2.27 & 2.68 & 1.66 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Benchmark}
 
-Table~\ref{tab:main} and Fig.~\ref{fig:roc} summarise the benchmark. The best model was stacked fusion of DINOv2 image and symptom predictions (AUC 0.703, 95\% CI 0.66--0.74), followed by the frozen DINOv2 image model alone (0.700). Late, early and gated fusion reached 0.683--0.696. Fine-tuning did not beat frozen features: ConvNeXt-Tiny reached 0.688, DenseNet121 0.672 and MobileNetV3 0.578, close to the published 0.645 and 0.554 \cite{shojaei2025pgu}. Symptoms alone were weak (best 0.596), and the modified McIsaac score ranked patients worse than chance (0.437).
+Table~\ref{tab:main} summarises the benchmark (ROC curves in Supplementary Fig.~S3). The best model was stacked fusion of DINOv2 image and symptom predictions (AUC 0.703, 95\% CI 0.66--0.74), followed by the frozen DINOv2 image model alone (0.700). Late, early and gated fusion reached 0.683--0.696. Fine-tuning did not beat frozen features: ConvNeXt-Tiny reached 0.688, DenseNet121 0.672 and MobileNetV3 0.578, close to the published 0.645 and 0.554 \cite{shojaei2025pgu}. Symptoms alone were weak (best 0.596), and the modified McIsaac score ranked patients worse than chance (0.437).
 
 Three models that use no throat anatomy did about as well as the published deep networks. The phone-only model reached 0.673, above the published image baseline and above all symptom models. Eighteen global photo statistics reached 0.646, and the original image size 0.562.
 
@@ -307,16 +309,9 @@ Modified McIsaac score & 0.437 [0.39, 0.48] & -- & 0.493 & 0.245 & 0.241 \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[!htbp]
-\centering
-\figfile{figures/fig2_roc.pdf}{0.55\textwidth}
-\caption{Mean ROC curves ($\pm$1 SD over five repeats) for stacked fusion (DINOv2), the frozen DINOv2 image model, the phone-only model and the LightGBM symptom model. Dashed line: chance.}
-\label{fig:roc}
-\end{figure}
-
 \subsection{Device and site shortcuts}
 
-Every analysis pointed to the phone as the main source of image performance (Table~\ref{tab:shortcut}, Fig.~\ref{fig:shortcut}). Image embeddings identified the phone almost perfectly (AUC 0.993 for DINOv2 and 0.997 for ConvNeXt), and so did the 18 photo statistics (0.958). When AUC was computed within each phone, image models fell from about 0.70 to 0.56--0.61, while the phone-only model fell to 0.49, as expected. Models trained and tested inside one phone did worse still: image AUC was 0.50 on Samsung photographs and 0.55--0.58 on Xiaomi photographs. Models did not transfer between phones: trained on one phone and tested on the other, image AUC was 0.50--0.53 and every 95\% confidence interval included 0.5. Restricting to photographs with an original short side of at least 500 pixels did not change within-phone AUC (DINOv2: 0.568 Samsung, 0.611 Xiaomi), so very small crops do not explain the effect.
+Every analysis pointed to the phone as the main source of image performance (Table~\ref{tab:shortcut}, Fig.~\ref{fig:shortcut}). Image embeddings identified the phone almost perfectly (AUC 0.993 for DINOv2 and 0.997 for ConvNeXt), and so did the 18 photo statistics (0.958). When AUC was computed within each phone, image models fell from about 0.70 to 0.56--0.61, while the phone-only model fell to 0.49, as expected. Models trained and tested inside one phone did worse still: image AUC was 0.50 on Samsung photographs and 0.55--0.58 on Xiaomi photographs. Models did not transfer between phones: trained on one phone and tested on the other, image AUC was 0.50--0.53 and every 95\% confidence interval included 0.5. Restricting to large photographs did not change these results (Supplementary Section S7).
 
 \begin{table}[!htbp]
 \centering
@@ -351,7 +346,20 @@ Cross-phone: symptoms [95\% CI] & 0.424 [0.34, 0.52] & 0.482 [0.41, 0.55] & -- \
 \label{fig:shortcut}
 \end{figure}
 
-The frozen DINOv2 image model beat the phone-only model by 0.025 AUC (corrected $t$-test $p = 0.035$, uncorrected), whereas ConvNeXt did not ($+0.006$, $p = 0.35$). Within the Xiaomi subgroup the photographs therefore carry a modest signal (AUC about 0.58--0.61); within the Samsung subgroup they carry essentially none.
+The frozen DINOv2 image model beat the phone-only model by 0.025 AUC (corrected $t$-test, one-sided $p = 0.035$, uncorrected), whereas ConvNeXt did not ($+0.006$, $p = 0.35$). Within the Xiaomi subgroup the photographs therefore carry a modest signal (AUC about 0.58--0.61); within the Samsung subgroup they carry essentially none.
+
+\subsection{Validation of the deconfounded AUC}
+
+In the simulation (Fig.~\ref{fig:validation}A, Supplementary Table S2), the deconfounded AUC matched the target in every setting (largest mean bias 0.001), for the marker alone, the site signature alone and the learned model. The pooled AUC of the learned model rose from 0.60 to 0.75 as the prevalence gap grew, and the site signature alone reached 0.74, although the model's AUC in an unconfounded population fell from 0.60 to 0.54 because it relied more on the site. The adjusted AUC was unbiased for the marker and the site signature but overestimated the learned model by up to 0.024, because it ignores the site offset in its scores.
+
+On resampled PGUPharyngitis (Fig.~\ref{fig:validation}B, Supplementary Table S3), the image model reached a pooled AUC of 0.535 when the phone carried no label information (gap 0). As the gap grew to 0.4, its pooled AUC rose to 0.775, close to that of the phone alone (0.767), while its deconfounded AUC stayed between 0.533 and 0.552, within 0.02 of the shortcut-free reference. The adjusted AUC stayed between 0.554 and 0.578. After LEACE, pooled AUC stayed between 0.537 and 0.567 at every gap.
+
+\begin{figure}[!htbp]
+\centering
+\figfile{figures/fig_validation.pdf}{\textwidth}
+\caption{Validation of the deconfounded AUC against known answers. (A) Simulation, 500 replicates per point: logistic regression trained on a marker with true AUC 0.60 and a site signature. The target (dashed) is the same model's AUC in an unconfounded population from the same sites; the deconfounded AUC lies on it. Dotted: pooled AUC of the site signature alone. (B) PGUPharyngitis resampled to a given prevalence gap between phones (mean $\pm$ SD over 20 resamples, DINOv2 image model). Dashed: the image model's AUC with no gap; dotted: phone-only pooled AUC; vertical line: the gap in the full data.}
+\label{fig:validation}
+\end{figure}
 
 \subsection{Deconfounded evaluation}
 
@@ -359,31 +367,33 @@ Reweighting patients so that the label is independent of the phone removed most 
 
 The metric changed several conclusions. On pooled AUC, the DINOv2 image model beat the LightGBM symptom model by 0.111 ($p < 0.001$); on deconfounded AUC the difference was 0.010 ($p = 0.75$). The image model's lead over the 18 photo statistics shrank from 0.054 ($p = 0.004$) to 0.033 ($p = 0.09$). Conversely, the image model beat the phone-only model by only 0.025 on pooled AUC ($p = 0.07$, two-sided) but by 0.059 on deconfounded AUC ($p = 0.001$), so the photographs do carry some information that the phone does not. Fusion did not beat the image alone on either metric (gated DINOv2 $+0.013$, $p = 0.43$; stacking $+0.003$, $p = 0.70$).
 
+The adjusted AUC led to the same conclusions: images beat the phone ($+0.099$, $p < 0.001$) but not the symptoms ($+0.043$, $p = 0.18$). It was higher than the deconfounded AUC for the image models (DINOv2 0.599 vs 0.558), but not for the symptom models (0.556 vs 0.550) or gated fusion (0.583 vs 0.568). The difference reflects how far a model's scores are shifted by phone: the image model's predictions carry a phone offset that the adjusted AUC does not see.
+
 \begin{table}[!htbp]
 \centering
 \footnotesize
-\caption{Pooled and deconfounded AUC (Eq.~\ref{eq:deconf}) of the main models, mean over five repeats (fine-tuned CNNs: one repeat). The deconfounded 95\% CI is from a weighted patient-level bootstrap. $p$ values compare deconfounded fold-level AUC with the corrected $t$-test (two-sided).}
+\caption{Pooled and deconfounded AUC (Eq.~\ref{eq:deconf}) of the main models, mean over five repeats (fine-tuned CNNs: one repeat). The deconfounded 95\% CI is from a weighted patient-level bootstrap; the adjusted AUC is the Janes--Pepe covariate-adjusted AUC over the three phone groups. $p$ values compare fold-level AUC with the corrected $t$-test (two-sided).}
 \label{tab:deconf}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.6cm}ccc@{}}
 \toprule
-Model & Pooled AUC & Deconfounded AUC [95\% CI] & Within phone$^{a}$ \\
+Model & Pooled AUC & Deconfounded AUC [95\% CI] & Adjusted AUC \\
 \midrule
-Phone only & 0.673 & 0.496 [0.45, 0.55] & 0.491 \\
-Image size only & 0.562 & 0.498 [0.45, 0.55] & 0.508 \\
-Photo statistics (18 features) & 0.646 & 0.525 [0.47, 0.58] & 0.541 \\
-Symptoms, logistic regression & 0.574 & 0.536 [0.48, 0.59] & 0.523 \\
-Symptoms, LightGBM & 0.591 & 0.550 [0.50, 0.60] & 0.542 \\
-Image, frozen ConvNeXt-Tiny & 0.681 & 0.545 [0.50, 0.60] & 0.552 \\
-Image, frozen DINOv2 & 0.700 & 0.558 [0.51, 0.61] & 0.578 \\
-Late fusion, DINOv2 & 0.696 & 0.559 [0.51, 0.61] & 0.566 \\
-Early fusion, DINOv2 & 0.686 & 0.553 [0.50, 0.61] & 0.571 \\
-Stacked fusion, DINOv2 & 0.703 & 0.559 [0.51, 0.61] & 0.576 \\
-Gated fusion, DINOv2 & 0.691 & 0.568 [0.52, 0.62] & 0.576 \\
-Gated fusion, ConvNeXt & 0.684 & 0.568 [0.52, 0.62] & 0.566 \\
-Image, fine-tuned DenseNet121 & 0.672 & 0.552 [0.50, 0.61] & 0.554 \\
-Image, fine-tuned MobileNetV3 & 0.578 & 0.518 [0.47, 0.57] & 0.509 \\
-Image, fine-tuned ConvNeXt-Tiny & 0.688 & 0.583 [0.54, 0.63] & 0.597 \\
+Phone only & 0.673 & 0.496 [0.45, 0.55] & 0.488 \\
+Image size only & 0.562 & 0.498 [0.45, 0.55] & 0.482 \\
+Photo statistics (18 features) & 0.646 & 0.525 [0.47, 0.58] & 0.546 \\
+Symptoms, logistic regression & 0.574 & 0.536 [0.48, 0.59] & 0.534 \\
+Symptoms, LightGBM & 0.591 & 0.550 [0.50, 0.60] & 0.556 \\
+Image, frozen ConvNeXt-Tiny & 0.681 & 0.545 [0.50, 0.60] & 0.563 \\
+Image, frozen DINOv2 & 0.700 & 0.558 [0.51, 0.61] & 0.599 \\
+Late fusion, DINOv2 & 0.696 & 0.559 [0.51, 0.61] & 0.589 \\
+Early fusion, DINOv2 & 0.686 & 0.553 [0.50, 0.61] & 0.588 \\
+Stacked fusion, DINOv2 & 0.703 & 0.559 [0.51, 0.61] & 0.599 \\
+Gated fusion, DINOv2 & 0.691 & 0.568 [0.52, 0.62] & 0.583 \\
+Gated fusion, ConvNeXt & 0.684 & 0.568 [0.52, 0.62] & 0.572 \\
+Image, fine-tuned DenseNet121 & 0.672 & 0.552 [0.50, 0.61] & 0.571 \\
+Image, fine-tuned MobileNetV3 & 0.578 & 0.518 [0.47, 0.57] & 0.497 \\
+Image, fine-tuned ConvNeXt-Tiny & 0.688 & 0.583 [0.54, 0.63] & 0.598 \\
 \addlinespace
 \multicolumn{4}{@{}l}{\textit{Paired comparisons: $\Delta$ pooled AUC ($p$) / $\Delta$ deconfounded AUC ($p$)}} \\
 Image DINOv2 vs symptoms LightGBM & \multicolumn{3}{l}{$+0.111$ ($p < 0.001$) / $+0.010$ ($p = 0.75$)} \\
@@ -391,7 +401,6 @@ Image DINOv2 vs photo statistics & \multicolumn{3}{l}{$+0.054$ ($p = 0.004$) / $
 Image DINOv2 vs phone only & \multicolumn{3}{l}{$+0.025$ ($p = 0.07$) / $+0.059$ ($p = 0.001$)} \\
 Gated fusion vs image (DINOv2) & \multicolumn{3}{l}{$-0.005$ ($p = 0.72$) / $+0.013$ ($p = 0.43$)} \\
 \bottomrule
-\multicolumn{4}{@{}p{0.95\linewidth}@{}}{\scriptsize $^{a}$Unweighted mean of the AUCs within Samsung and within Xiaomi photographs; Table~\ref{tab:main} instead weights the three phone strata (including unknown) by size.}
 \end{tabular}
 \end{table}
 
@@ -401,12 +410,14 @@ Table~\ref{tab:mitigation} and Fig.~\ref{fig:mitigation}B show the mitigation re
 
 The other methods left the phone identifiable. Colour constancy did not change the probe (0.995 and 0.993) or the pooled AUC, so the phone's signature in the embeddings is not mainly a colour cast. Phone as covariate left pooled AUC unchanged (0.699 and 0.679), because the image features still encode the phone. Reweighting lowered pooled AUC (0.631 and 0.565) without a significant change in deconfounded AUC. Adversarial training lowered pooled AUC as $\lambda$ increased (DINOv2: 0.652 at $\lambda = 0.3$ to 0.626 at $\lambda = 10$), which could be read as successful debiasing, yet the hidden layer still identified the phone with AUC 0.97--0.98 at every $\lambda$, no better than the matched network without an adversary (0.98). The drop in pooled AUC came from a weaker model, not from removing the phone.
 
+End-to-end fine-tuning gave the same picture (Table~\ref{tab:mitigation}, bottom). With early stopping on the validation deconfounded AUC, plain ERM reached a pooled AUC of 0.642 and a deconfounded AUC of 0.548. GroupDRO and the adversarial head lowered pooled AUC to 0.609 and reached deconfounded AUCs of 0.550 and 0.567, neither different from ERM (fold-level differences $+0.015$, $p = 0.65$, and $+0.032$, $p = 0.30$). The phone remained identifiable from the pooled features of every fine-tuned model (probe AUC 0.99--1.00), including the one trained against a phone adversary.
+
 Colour constancy improved cross-phone transfer slightly in all four train--test directions (ConvNeXt: 0.530 to 0.596 and 0.507 to 0.569; DINOv2: 0.519 to 0.537 and 0.502 to 0.535), but the confidence intervals overlapped those of the uncorrected features and only one excluded 0.5 (ConvNeXt, Samsung to Xiaomi, 0.53--0.66). Per-phone standardisation changed cross-phone AUC by less than 0.01.
 
 \begin{table}[!htbp]
 \centering
 \footnotesize
-\caption{Shortcut mitigation on frozen embeddings (5\,$\times$\,5 cross-validation). Pooled and deconfounded AUC are means over repeats; Phone ID is the AUC of a linear probe identifying Xiaomi vs Samsung from the transformed test features (lower means less phone information; 0.5 = none). No method's deconfounded AUC differed from its reference (corrected $t$-test, all $p > 0.19$).}
+\caption{Shortcut mitigation on frozen embeddings (5\,$\times$\,5 cross-validation) and with end-to-end fine-tuning (bottom). Pooled and deconfounded AUC are means over repeats; Phone ID is the AUC of a linear probe identifying Xiaomi vs Samsung from the transformed test features (lower means less phone information; 0.5 = none). No method's deconfounded AUC differed from its reference (corrected $t$-test, all $p > 0.19$; end-to-end methods were compared with ERM).}
 \label{tab:mitigation}
 \setlength{\tabcolsep}{3.2pt}
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.9cm}cccccc@{}}
@@ -428,6 +439,11 @@ Adversarial, $\lambda = 0.3$ & 0.652 & 0.560 & 0.970 & 0.630 & 0.559 & 0.976 \\
 Adversarial, $\lambda = 1$ & 0.638 & 0.556 & 0.975 & 0.612 & 0.555 & 0.982 \\
 Adversarial, $\lambda = 3$ & 0.625 & 0.549 & 0.975 & 0.607 & 0.555 & 0.981 \\
 Adversarial, $\lambda = 10$ & 0.626 & 0.546 & 0.978 & 0.588 & 0.557 & 0.979 \\
+\addlinespace
+\multicolumn{7}{@{}l}{\textit{End-to-end fine-tuning, ConvNeXt-Tiny (one repeat; early stopping on validation deconfounded AUC)}} \\
+ERM (reference) & & & & 0.642 & 0.548 & 0.994 \\
+GroupDRO & & & & 0.609 & 0.550 & 0.993 \\
+Adversarial (gradient reversal) & & & & 0.609 & 0.567 & 0.998 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -439,68 +455,9 @@ Adversarial, $\lambda = 10$ & 0.626 & 0.546 & 0.978 & 0.588 & 0.557 & 0.979 \\
 \label{fig:mitigation}
 \end{figure}
 
-\subsection{Does fusion help?}
+\subsection{Fusion, sensitivity and other analyses}
 
-Gated fusion (DINOv2) beat the best symptom model by 0.095 AUC (Holm-adjusted $p = 0.012$; significant in 5 of 5 DeLong repeats) but did not beat the best image-only model ($-0.020$, $p = 1.0$) or the best standard fusion ($-0.008$, $p = 1.0$; Table~\ref{tab:hypotheses}). Stacking added 0.003 AUC over the image alone ($p = 0.29$). Within a phone, adding symptoms to the image changed AUC by $-0.01$ to $+0.04$. Symptoms therefore add little once the photograph is known.
-
-\begin{table}[!htbp]
-\centering
-\footnotesize
-\caption{Planned comparisons for gated fusion (DINOv2) under three tie rules. $\Delta$AUC is the mean fold-level difference; $p$ values are one-sided, Nadeau--Bengio corrected and Holm-adjusted.}
-\label{tab:hypotheses}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.9cm}ccc@{}}
-\toprule
-Comparison & Ties bacterial & Ties non-bacterial & Ties dropped \\
-\midrule
-H1: vs best symptom-only & $+0.095$ ($p = 0.012$) & $+0.044$ ($p = 0.38$) & $+0.051$ ($p = 0.22$) \\
-H2: vs best image-only & $-0.020$ ($p = 1.0$) & $-0.009$ ($p = 1.0$) & $-0.002$ ($p = 1.0$) \\
-H3: vs best standard fusion & $-0.008$ ($p = 1.0$) & $-0.018$ ($p = 1.0$) & $-0.019$ ($p = 1.0$) \\
-\addlinespace
-Image (DINOv2): AUC / within phone & 0.700 / 0.586 & 0.671 / 0.609 & 0.696 / 0.605 \\
-Phone only: AUC & 0.673 & 0.618 & 0.650 \\
-Best symptom-only: AUC & 0.596 & 0.616 & 0.639 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Ablations}
-
-No component of the fusion network made a measurable difference (Fig.~\ref{fig:ablation}). With ConvNeXt features, the full gated model reached 0.684; replacing the gate by concatenation gave 0.686 ($p = 0.60$), FiLM 0.681, removing the auxiliary heads 0.682 and removing modality dropout 0.682. Training on hard instead of soft labels lowered AUC to 0.672 (difference 0.012, $p = 0.19$). Removing fever and cough did not hurt (0.690). The shuffled-image control fell to 0.529, below symptoms alone. The pipeline therefore does not leak labels, and the fusion network relied almost entirely on the image branch.
-
-\begin{figure}[!htbp]
-\centering
-\figfile{figures/fig4_ablation.pdf}{0.7\textwidth}
-\caption{Ablation of the gated fusion network (ConvNeXt features): mean fold AUC with 95\% confidence interval. The shuffled-image control falls to chance.}
-\label{fig:ablation}
-\end{figure}
-
-\subsection{Label dependence and sensitivity}
-
-Models discriminated better on unanimous than on split votes (DINOv2 image: 0.719 vs 0.678; symptoms: 0.623 vs 0.580). Image predictions correlated more with the physicians' vote share than symptom predictions did (Spearman 0.32 vs 0.13), though the phone-only model also reached 0.28. Image embeddings predicted the out-of-fold errors of the symptom model (cross-validated $r = 0.29$; permutation $p = 0.002$), but this test cannot separate throat appearance from phone identity. Under both alternative tie rules the conclusions held: image models stayed near 0.67--0.70 overall and about 0.61 within phone, fusion never beat the image alone, and the advantage of fusion over symptoms was no longer significant (Table~\ref{tab:hypotheses}).
-
-\subsection{Calibration and clinical utility}
-
-Among the frozen-feature image and fusion models, Brier scores ranged from 0.188 (gated fusion, DINOv2) to 0.226 (stacking, ConvNeXt); the phone-only model scored 0.182. Class-balanced training made image and fusion models overestimate risk, and decision-curve analysis showed no net benefit over treating everyone at thresholds up to 0.20; at 0.30 the stacked model gave a net benefit of 0.024 versus $-0.030$ for treat-all, but the phone-only model gave 0.082 (Fig.~\ref{fig:calib}). The models are therefore not ready for treatment decisions.
-
-\begin{figure}[!htbp]
-\centering
-\figfile{figures/fig6a_calibration.pdf}{0.45\textwidth}\hfill
-\figfile{figures/fig6b_decision_curve.pdf}{0.52\textwidth}
-\caption{(A) Calibration curves and (B) decision curves for the main models. Treat-all and treat-none are shown for reference.}
-\label{fig:calib}
-\end{figure}
-
-\subsection{Explainability and subgroups}
-
-In the symptom model, cough, age, vomiting, myalgia and sore throat had the largest mean absolute SHAP values (Fig.~\ref{fig:shap}). The gate weighted the image at $g \approx 0.48$ on average (DINOv2) and slightly less when physicians disagreed (median 0.47 vs 0.50, Mann--Whitney $p < 0.001$; Fig.~\ref{fig:gate}). Grad-CAM maps (Fig.~\ref{fig:gradcam}) of the most confident bacterial cases highlighted white spots in close-up photographs, whereas the most confident non-bacterial cases were wide views of the oral cavity with the uvula and tongue visible. Framing and zoom, which may differ between sites, may therefore act as an additional cue. The image model discriminated better in children aged 14 or younger (AUC 0.77) than in adults aged 45 or older (0.64), and similarly in women (0.68) and men (0.72) (Fig.~\ref{fig:subgroups}).
-
-\begin{figure}[!htbp]
-\centering
-\figfile{figures/fig5_gradcam.png}{\textwidth}
-\caption{Grad-CAM maps of a ConvNeXt-Tiny fine-tuned on all patients for the six most confident bacterial (top) and non-bacterial (bottom) cases. Red marks high attention. Bacterial predictions are close-ups; non-bacterial predictions are wide views.}
-\label{fig:gradcam}
-\end{figure}
+Gated fusion (DINOv2) beat the best symptom model by 0.095 AUC (Holm-adjusted $p = 0.012$) but did not beat the best image-only model ($-0.020$) or the best standard fusion ($-0.008$; both $p = 1.0$), and its advantage over symptoms was not significant under either alternative tie rule (Supplementary Table S6). No component of the fusion network (gate, auxiliary heads, modality dropout, FiLM) changed AUC by more than 0.012, and a shuffled-image control fell to 0.529, ruling out label leakage (Supplementary Section S4). Under both alternative tie rules, image models stayed at 0.67--0.70 pooled and about 0.61 within phone. Calibration, decision curves (no net benefit over treat-all at thresholds up to 0.20, and less than the phone-only model above that), label dependence, Grad-CAM and subgroup analyses are in Supplementary Sections S6--S8; the image model discriminated better in children ($\leq$ 14 years, AUC 0.77) than in adults $\geq$ 45 years (0.64).
 
 %% ---------------------------------------------------------------------------------------------
 \section{Discussion}
@@ -508,19 +465,17 @@ In the symptom model, cough, age, vomiting, myalgia and sore throat had the larg
 
 We set out to improve smartphone pharyngitis classification by adding symptoms to throat photographs. Instead, the benchmark showed that most of the apparent image performance on PGUPharyngitis comes from recognising the phone, and with it the city, that produced the photograph. The phone alone predicted the expert label as well as the published deep-learning baseline, image embeddings identified the phone almost perfectly, and no model transferred between phones. Two further results go beyond this dataset. A simple reweighting of the evaluation removes the credit a model earns from the site, and under it the differences between image, symptom and fusion models largely vanish. Removing the phone from the features, by several methods that do remove it, does not reveal a stronger throat signal.
 
-\paragraph{Why the shortcut exists} Bacterial prevalence was 44\% among Xiaomi photographs and 15\% among Samsung photographs. Whether this reflects true epidemiological differences between the two cities, different referral patterns or different labelling physicians cannot be resolved from the released data. Either way, any feature that identifies the phone (colour rendering, sharpness, lighting, framing) becomes predictive of the label. Colour constancy did not reduce phone identification, so the signature is not only a colour cast; our Grad-CAM maps suggest that framing differs too, with confident bacterial predictions on close-ups and confident non-bacterial predictions on wide views. This is the same failure mode reported for chest radiographs, where models recognised hospitals and scanners \cite{zech2018pneumonia,degrave2021covid,badgeley2019hip}, and it is invisible in pooled cross-validation.
+\paragraph{Why the shortcut exists} Bacterial prevalence was 44\% among Xiaomi photographs and 15\% among Samsung photographs. The two phones also differed in who was photographed and how they were labelled: Samsung patients reported more, mostly systemic, symptoms, were rated by more physicians and had far fewer tied votes. Part of the prevalence gap is therefore a property of the labelling rather than of the throats: with ties counted as non-bacterial the gap shrinks from 29 to 12 percentage points. Whether the remainder reflects true epidemiological differences between the two cities, different referral patterns or different labelling panels cannot be resolved from the released data. Either way, any feature that identifies the phone (colour rendering, sharpness, lighting, framing) becomes predictive of the label. Colour constancy did not reduce phone identification, so the signature is not only a colour cast; our Grad-CAM maps suggest that framing differs too, with confident bacterial predictions on close-ups and confident non-bacterial predictions on wide views. This is the same failure mode reported for chest radiographs, where models recognised hospitals and scanners \cite{zech2018pneumonia,degrave2021covid,badgeley2019hip}, and it is invisible in pooled cross-validation.
 
-\paragraph{Deconfounded AUC as a reporting standard} Within-site AUC is the usual check for site confounding, but it throws away every comparison between sites and becomes noisy when a site has few positives (57 in our Samsung group). The deconfounded AUC keeps all patients, needs only the site of each patient, and is calibrated against the shortcut: any site-only score gets 0.5. It also penalises a model whose scores are shifted by site, because pairs across sites count. On PGUPharyngitis it changed the ranking that matters for future work: the large pooled advantage of images over symptoms disappeared, while the small advantage of images over the phone became clear. The weights are standard inverse-probability weights, so the metric is easy to compute from released out-of-fold predictions; our code computes it for any model. It answers a narrower question than external validation: how well a model ranks patients if the sites had the same prevalence, with the same sites and devices. It does not remove a shortcut that is unrelated to the recorded site, and it relies on the site being recorded, which argues for recording it in every dataset.
+\paragraph{Deconfounded AUC as a reporting standard} Within-site AUC is the usual check for site confounding, but it throws away every comparison between sites and becomes noisy when a site has few positives (57 in our Samsung group). The deconfounded AUC keeps all patients, needs only the site of each patient, and is calibrated against the shortcut: any site-only score gets 0.5. It estimates a well-defined quantity, the model's AUC in the same sites without a prevalence gap, and both the simulation and the resampling experiment showed that it recovers this quantity while pooled AUC rises with the strength of confounding. The covariate-adjusted AUC of Janes and Pepe \cite{janes2008adjusting} is the natural alternative and reached the same qualitative conclusions here. The two answer different questions: the adjusted AUC asks how well a model ranks patients from the same site, the deconfounded AUC how well it ranks patients when the site is uninformative. Only the second penalises a score that is shifted by site, and that shift matters when one threshold is applied across sites or when a model meets a new device. We therefore suggest reporting both, and reading a large gap between them as a sign of a site offset. On PGUPharyngitis the metric changed the ranking that matters for future work: the large pooled advantage of images over symptoms disappeared, while the small advantage of images over the phone became clear. Because it uses standard inverse-probability weights, it can be computed from released out-of-fold predictions without retraining. It answers a narrower question than external validation, since the sites and devices stay the same; it does not remove a shortcut unrelated to the recorded site, and it needs the site to be recorded, which argues for recording it in every dataset.
 
-\paragraph{What mitigation can and cannot do} Methods that removed the phone (per-phone standardisation and LEACE) brought the pooled AUC down to about the deconfounded AUC of the unmitigated model and left the deconfounded AUC where it was. In this dataset, the device-independent signal that a frozen-feature model can reach is therefore about 0.55--0.58, whichever way the shortcut is handled; the mitigated models are not better at recognising bacterial pharyngitis, only more honest about how well they do it. This matters in practice, because a debiased model with a pooled AUC of 0.58 is the more trustworthy of the two, even though it looks worse in a table. Adversarial training was misleading: pooled AUC fell steadily with the adversarial weight, which could be reported as successful debiasing, yet a probe recovered the phone as well as from an unadjusted network. This agrees with the finding that adversarially removed attributes can be recovered from text representations \cite{elazar2018adversarial}, and it argues for reporting a leakage probe with any debiasing claim. Linear concept erasure is guaranteed to remove linear information \cite{belrose2023leace} and was the simplest effective method here; a nonlinear classifier could still recover some phone information from the erased features, which we did not test.
+\paragraph{What mitigation can and cannot do} Methods that removed the phone (per-phone standardisation and LEACE) brought the pooled AUC down to about the deconfounded AUC of the unmitigated model and left the deconfounded AUC where it was. In this dataset, the device-independent signal that an image model can reach is therefore about 0.55--0.58, whichever way the shortcut is handled, and end-to-end fine-tuning with GroupDRO or an adversarial head did not change this (Table~\ref{tab:mitigation}). The mitigated models are not better at recognising bacterial pharyngitis, only more honest about how well they do it. This matters in practice, because a debiased model with a pooled AUC of 0.58 is the more trustworthy of the two, even though it looks worse in a table. Adversarial training was misleading: pooled AUC fell steadily with the adversarial weight, which could be reported as successful debiasing, yet a probe recovered the phone as well as from an unadjusted network, both on frozen features and after end-to-end fine-tuning. This agrees with the finding that adversarially removed attributes can be recovered from text representations \cite{elazar2018adversarial}, and it argues for reporting a leakage probe with any debiasing claim. Linear concept erasure is guaranteed to remove linear information \cite{belrose2023leace} and was the simplest effective method here; a nonlinear classifier could still recover some phone information from the erased features, which we did not test.
 
-\paragraph{What remains when the shortcut is removed} Every model kept a deconfounded AUC between 0.52 and 0.58, and the images beat the phone-only model on this metric. The photographs therefore carry some information about the physicians' judgement beyond the phone, consistent with the residual test, but an AUC below 0.6 is far from clinically useful. The image model also worked best in children, in whom streptococcal pharyngitis is most common, which may deserve a dedicated study.
+\paragraph{What remains when the shortcut is removed} Every image, symptom and fusion model kept a deconfounded AUC between 0.52 and 0.58, and the images beat the phone-only model on this metric. The photographs therefore carry some information about the physicians' judgement beyond the phone, consistent with the residual test, but an AUC below 0.6 is far from clinically useful. The image model also worked best in children, in whom streptococcal pharyngitis is most common, which may deserve a dedicated study.
 
-\paragraph{Fusion} Fusion beat symptoms alone only under one of three equally defensible tie rules and never beat the image alone, on pooled or deconfounded AUC. The gate, auxiliary heads, modality dropout and FiLM conditioning made no difference, and the gated model learned to weight both branches almost equally. With symptoms this weak (AUC about 0.6) and an image signal dominated by site, there is little for a fusion architecture to exploit. For future work on this dataset, a better fusion architecture will not fix confounded data.
+\paragraph{Fusion and symptoms} Fusion beat symptoms alone only under one of three equally defensible tie rules and never beat the image alone, on any metric, and no component of the fusion network mattered. With symptoms this weak (AUC about 0.6), recorded differently at the two sites, and an image signal dominated by site, there is little for a fusion architecture to exploit: a better architecture will not fix confounded data. The modified McIsaac score ranked patients worse than chance, probably because the dataset lacks exudate and lymph-node items and the physicians were not using a clinical score.
 
-\paragraph{Symptoms and clinical scores} The modified McIsaac score ranked patients worse than chance. Two explanations are likely: the dataset lacks exudate and lymph-node items, and the labels come from physicians who were not using a clinical score. Cough and age were the most informative symptoms, consistent with clinical scores, but together the symptoms explained little of the physicians' decision.
-
-\paragraph{Implications} Smartphone throat-imaging studies, and multi-site smartphone imaging more generally, should (i) report a site- or device-only baseline, (ii) report deconfounded AUC alongside pooled AUC, (iii) evaluate within and across acquisition sites, (iv) report a leakage probe for any debiasing method, (v) balance or randomise devices across sites at data collection and (vi) standardise framing. Datasets should record site and device per image. A deployable model would also need on-device checks of photograph quality and framing, since the models here receive a single photograph and 22 tabular inputs and give no warning when a photograph is unusable; users would need only to take the photograph and record the symptoms. For PGUPharyngitis, our folds, out-of-fold predictions and evaluation code make these comparisons straightforward.
+\paragraph{Implications} Smartphone throat-imaging studies, and multi-site smartphone imaging more generally, should (i) report a site- or device-only baseline, (ii) report deconfounded and adjusted AUC alongside pooled AUC, (iii) evaluate within and across acquisition sites, (iv) report a leakage probe for any debiasing method, (v) balance or randomise devices across sites at data collection and (vi) standardise framing. Datasets should record site and device per image. A deployable model would also need on-device checks of photograph quality and framing, since the models here receive a single photograph and 22 tabular inputs and give no warning when a photograph is unusable; users would need only to take the photograph and record the symptoms. Items (i), (ii) and (iv) need only predictions and site labels; our \texttt{shortcut\_audit} package computes them in one call, and for PGUPharyngitis our folds and out-of-fold predictions make direct comparison straightforward.
 
 \subsection{Limitations}
 
@@ -529,18 +484,18 @@ We set out to improve smartphone pharyngitis classification by adding symptoms t
 \item City is not recorded; we used the EXIF phone model as a proxy for site and cannot separate phone from city effects. Sixty-three photographs had no EXIF phone.
 \item One hundred patients had tied votes; conclusions about fusion versus symptoms depend on the tie rule.
 \item The dataset is small (205 bacterial cases) and from one country, and there is no external test set.
-\item Fine-tuned CNNs were evaluated with one repeat instead of five, so their estimates are less precise.
+\item Fine-tuned CNNs were evaluated with one repeat instead of five, so their estimates are less precise; Grad-CAM maps were not rated by clinicians.
 \item The analyses were planned but not formally pre-registered and should be regarded as exploratory.
-\item Grad-CAM maps were not rated by clinicians, and framing differences were observed, not measured.
-\item The deconfounded AUC uses weights estimated on the same cohort and removes only confounding by the recorded phone group; it does not replace external validation.
-\item Mitigation was applied to frozen embeddings with linear or shallow classifiers. End-to-end fine-tuning with these methods might behave differently, and LEACE removes only linear phone information.
+\item The deconfounded AUC uses weights estimated on the same cohort and removes only confounding by the recorded phone group; it does not replace external validation. Its variance grows when a site has very few cases of one class.
+\item Most mitigation methods were applied to frozen embeddings; end-to-end mitigation was tested for one backbone and one repeat. LEACE removes only linear phone information.
+\item Labelling differed between sites, so part of the prevalence gap may reflect the labelling panels rather than disease; the data do not allow these to be separated.
 \end{enumerate}
 
 %% ---------------------------------------------------------------------------------------------
 \section{Conclusion}
 \label{sec:conclusion}
 
-On the largest public smartphone pharyngitis dataset, image models appear to reach an AUC near 0.70, but most of this performance comes from recognising the phone and site that took the photograph. A deconfounded AUC, under which a site-only model scores 0.5, puts every image, symptom and fusion model between 0.52 and 0.58 and removes the apparent advantage of images over symptoms. Colour constancy, harmonisation, concept erasure, reweighting and adversarial training did not raise this figure; methods that removed the phone made the pooled AUC honest rather than the model better, and adversarial training only appeared to work. Smartphone imaging models should be judged by deconfounded, within-site and cross-site performance, against a device-only baseline and with a leakage probe for any debiasing claim, before any clinical claim is made.
+On the largest public smartphone pharyngitis dataset, image models appear to reach an AUC near 0.70, but most of this performance comes from recognising the phone and site that took the photograph. A deconfounded AUC, under which a site-only model scores 0.5, puts every image, symptom and fusion model between 0.52 and 0.58 and removes the apparent advantage of images over symptoms. In simulation and on resampled data, the deconfounded AUC recovered the shortcut-free AUC while pooled AUC grew with the strength of confounding. Colour constancy, harmonisation, concept erasure, reweighting, GroupDRO and adversarial training did not raise this figure; methods that removed the phone made the pooled AUC honest rather than the model better, and adversarial training only appeared to work. Smartphone imaging models should be judged by deconfounded, within-site and cross-site performance, against a device-only baseline and with a leakage probe for any debiasing claim, before any clinical claim is made.
 
 %% ---------------------------------------------------------------------------------------------
 \section*{CRediT authorship contribution statement}
@@ -562,39 +517,16 @@ No formal study protocol was published and the study was not registered; the ana
 PGUPharyngitis is publicly available under CC BY 4.0 at \url{https://doi.org/10.6084/m9.figshare.28163513}. Fold assignments and out-of-fold predictions are released with the code.
 
 \section*{Code availability}
-All code, configuration files, fold assignments and out-of-fold predictions are available at \url{https://github.com/sandesh-bhatta-9/pharyngitis-fusion} under the MIT licence. Three scripts (\texttt{scripts/run\_all.sh}, \texttt{run\_extra.sh} and \texttt{run\_mitigation.sh}) reproduce every table and figure.
+All code, configuration files, fold assignments and out-of-fold predictions are available at \url{https://github.com/sandesh-bhatta-9/pharyngitis-fusion} under the MIT licence. Five scripts in \texttt{scripts/} reproduce every table and figure, and the \texttt{shortcut\_audit} package computes the deconfounded and adjusted AUC, LEACE and the leakage probe for any study.
 
 \section*{Declaration of generative AI and AI-assisted technologies in the writing process}
 During the preparation of this work the author used Claude (Anthropic) to assist with drafting and editing the manuscript. After using this tool, the author reviewed and edited the content as needed and takes full responsibility for the content of the publication.
 
+\section*{Appendix A. Supplementary material}
+Supplementary material (site differences in symptoms, full validation and mitigation tables, fusion-network details and ablations, planned fusion hypotheses, ROC, calibration and decision curves, additional controls, explainability and subgroup analyses) is provided as a separate file.
+
 \section*{Acknowledgements}
 The author thanks the creators of PGUPharyngitis for releasing their data publicly.
-
-%% ---------------------------------------------------------------------------------------------
-\appendix
-\section{Supplementary figures}
-\label{app:supp}
-
-\begin{figure}[h]
-\centering
-\figfile{figures/figS1_subgroups.pdf}{0.75\textwidth}
-\caption{AUC of the frozen DINOv2 image model by sex, age band and phone, with 95\% bootstrap confidence intervals. Dashed line: overall AUC.}
-\label{fig:subgroups}
-\end{figure}
-
-\begin{figure}[h]
-\centering
-\figfile{figures/figS2_shap.pdf}{0.75\textwidth}
-\caption{SHAP summary of the LightGBM symptom model fitted on all patients.}
-\label{fig:shap}
-\end{figure}
-
-\begin{figure}[h]
-\centering
-\figfile{figures/figS3_gate.pdf}{\textwidth}
-\caption{Gate values of the gated fusion model (DINOv2): distribution for unanimous and split votes (left) and median gate value by number of positive symptoms (right). $g = 1$ means the model relies only on the image.}
-\label{fig:gate}
-\end{figure}
 
 \bibliographystyle{elsarticle-num}
 \bibliography{references}

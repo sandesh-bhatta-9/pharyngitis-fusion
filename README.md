@@ -18,6 +18,25 @@ mitigation methods with a probe that measures how much phone information each le
 
 ![Figure 3: AUC overall and within one phone (A), and cross-phone transfer (B)](figures/fig3_site_shortcut.png)
 
+## Check your own model: `shortcut_audit`
+
+A small package (numpy, pandas, scikit-learn only) that tells you whether a multi-site classifier's AUC comes from the
+site. It needs only labels, scores and the site of each patient.
+
+```bash
+pip install "git+https://github.com/sandesh-bhatta-9/pharyngitis-fusion"
+python -m shortcut_audit predictions.csv --y y --p p --site site --group repeat
+```
+
+```python
+from shortcut_audit import audit
+audit(y, p, site)   # pooled, deconfounded and adjusted AUC with 95% CIs, within-site AUC, site-only AUC
+```
+
+See [`shortcut_audit/README.md`](shortcut_audit/README.md). In a simulation with a known answer and on PGUPharyngitis
+resampled to different prevalence gaps, the deconfounded AUC recovered the shortcut-free AUC while pooled AUC rose with
+the gap (paper Fig. 3, `src/validate_metric.py`).
+
 ## Main results
 
 735 patients, 5-fold cross-validation repeated 5 times with nested tuning (fine-tuned CNNs: one repeat). Full table:
@@ -52,7 +71,7 @@ git clone https://github.com/sandesh-bhatta-9/pharyngitis-fusion.git
 cd pharyngitis-fusion
 conda env create -f environment.yml      # or: python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 conda activate pharyngitis
-python -m pytest -q tests                # 14 unit tests, a few seconds
+python -m pytest -q tests                # 18 unit tests, a few seconds
 ```
 
 Pretrained weights (ConvNeXt-Tiny, DINOv2 ViT-S/14, DenseNet121, MobileNetV3, about 250 MB in total) are downloaded
@@ -65,6 +84,8 @@ bash scripts/download_data.sh    # 191 MB from Figshare, checksum-verified; see 
 bash scripts/run_all.sh          # data preparation, folds, features, baselines, fusion, ablations, controls
 bash scripts/run_extra.sh        # site-shortcut analyses, tie-rule sensitivity, fine-tuning, final metrics and figures
 bash scripts/run_mitigation.sh   # deconfounded AUC and shortcut mitigation (about 10 minutes)
+bash scripts/run_validation.sh   # site comparison, metric validation (simulation + resampling), supplementary tables
+bash scripts/run_finetune_mitigation.sh   # end-to-end GroupDRO / adversarial fine-tuning (about 1 hour)
 ```
 
 The first two scripts take about 3 hours on an M-series MacBook. `run_all.sh` stops at the first error; `run_extra.sh` keeps
@@ -94,13 +115,16 @@ Every script is run as `python -m src.<name>` from the project root and document
 | `baselines` | Symptom models, modified McIsaac score, phone-only, image logistic regression, late/early/stacked fusion |
 | `fusion` | Gated cross-modal fusion network and its ablations (`--fusion concat/film`, `--hard-labels`, `--aux 0`, ...) |
 | `finetune_image` | End-to-end fine-tuning of CNNs (reproduces the published baselines) |
-| `site_shortcut` | Image size and photo-statistics baselines, phone identification, within-phone and cross-phone tests |
+| `site_shortcut` | Image size and photo-statistics baselines, phone identification, within-phone and cross-phone tests, patient and labelling differences between phones (`compare`) |
 | `mitigate` | Deconfounded AUC, 13 shortcut-mitigation methods, phone-leakage probe, cross-phone transfer |
+| `finetune_mitigate` | End-to-end fine-tuning with ERM, GroupDRO or a gradient-reversal phone head, with a leakage probe |
+| `validate_metric` | Simulation and resampling experiments that check the deconfounded AUC against known answers |
+| `supp_tables` | LaTeX rows of the supplementary tables, generated from `results/metrics` |
 | `evaluate` | All metrics from the out-of-fold predictions, with bootstrap CIs |
 | `stats` | Nadeau-Bengio corrected t-test, DeLong test, Holm correction, hypotheses H1-H3 |
 | `label_dependence` | Unanimous vs split votes, AUC within phone, residual test, symptom knock-outs |
 | `explain` | SHAP, gate values, Grad-CAM |
-| `figures` | ROC, calibration, decision curves, ablation, subgroups, Figures 3 and 4 |
+| `figures` | ROC, calibration, decision curves, ablation, subgroups, paper Figures 2-4 |
 
 ## Methods in brief
 
@@ -122,7 +146,8 @@ More detail: [`paper/analysis_plan.md`](paper/analysis_plan.md) and [`data/READM
 ```
 configs/    default.yaml (main analysis), tie_*.yaml (sensitivity), synthetic.yaml (smoke test)
 src/        all code
-scripts/    download_data.sh, run_all.sh, run_extra.sh, run_mitigation.sh
+scripts/    download_data.sh, run_all.sh, run_extra.sh, run_mitigation.sh, run_validation.sh, run_finetune_mitigation.sh
+shortcut_audit/  reusable package: deconfounded and adjusted AUC, LEACE, leakage probe
 tests/      unit tests for the statistics and preprocessing code
 data/       raw data (downloaded, not in git) and committed fold assignments
 results/    out-of-fold predictions (oof/, mitigation/oof/) and metric tables (metrics/)

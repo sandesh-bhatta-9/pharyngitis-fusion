@@ -1,0 +1,17 @@
+{
+  "title": "Recognising the phone, not the throat: code for deconfounded evaluation and shortcut mitigation in smartphone pharyngitis classification",
+  "description": "Code, fold assignments and out-of-fold predictions for a study of device and site shortcuts on the PGUPharyngitis dataset, including the shortcut_audit package (deconfounded AUC, covariate-adjusted AUC, LEACE concept erasure and site-leakage probes).",
+  "upload_type": "software",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "Bhatta, Sandesh",
+      "affiliation": "Department of Computer Science, University at Albany, State University of New York",
+      "orcid": "0009-0008-0399-0480"
+    }
+  ],
+  "keywords": ["shortcut learning", "confounding", "smartphone imaging", "pharyngitis", "concept erasure", "AUC"],
+  "related_identifiers": [
+    {"identifier": "10.6084/m9.figshare.28163513.v1", "relation": "isDerivedFrom", "resource_type": "dataset"}
+  ]
+}

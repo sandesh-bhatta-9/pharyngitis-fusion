@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
-from src.mitigate import Leace, balance_weights, onehot
+from src.mitigate import Leace, balance_weights, onehot  # re-exported from shortcut_audit
 
 
 def _cohort(seed=0, n=600):
