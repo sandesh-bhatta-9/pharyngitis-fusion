@@ -46,3 +46,17 @@ Added after the main results were known, and therefore exploratory. Code: `src/m
 - **Leakage probe:** linear probe identifying Xiaomi vs Samsung from the transformed test features in every outer fold.
 - **Tests:** corrected resampled t-test (two-sided, uncorrected) on fold-level pooled and deconfounded AUC against the
   reference model of the same backbone.
+
+## Addendum 2 (2026-10-06): metric validation, adjusted AUC, end-to-end mitigation, site comparison
+
+Also added after the main results, in response to an internal review; exploratory.
+
+- **Covariate-adjusted AUC** (Janes & Pepe 2008) reported next to the deconfounded AUC for every model.
+- **Simulation:** two sites, marker with true AUC 0.60, site signature (SMD 3), prevalence gap 0-0.4, 500 replicates;
+  target = AUC of the same model in 20,000 unconfounded patients from the same sites.
+- **Resampling sweep:** 200 patients per phone, overall prevalence 0.25, gap 0-0.4, 20 resamples, stratified 5-fold CV.
+- **End-to-end mitigation:** fine-tuned ConvNeXt-Tiny (1 repeat) with ERM, GroupDRO (eta = 0.01) or a gradient-reversal
+  phone head (lambda ramped to 1); early stopping on validation deconfounded AUC for all three; leakage probe on pooled
+  backbone features.
+- **Site comparison:** raters per patient, agreement, ties, prevalence under each tie rule, symptoms (chi-square,
+  Bonferroni over 20 symptoms).

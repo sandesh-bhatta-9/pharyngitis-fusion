@@ -1,7 +1,7 @@
 Highlights
 
 - The phone model alone predicts expert pharyngitis labels with AUC 0.67.
-- A deconfounded AUC, under which any phone-only model scores 0.5, is introduced.
+- A deconfounded AUC scores phone-only models 0.5 and recovers the shortcut-free AUC.
 - Deconfounded, image and fusion models fall from about 0.70 to 0.52–0.58.
 - Concept erasure removes the phone signal but recovers no throat signal.
-- Adversarial debiasing lowers AUC yet leaves the phone 97% identifiable.
+- Adversarial debiasing lowers AUC yet leaves the phone 97–100% identifiable.

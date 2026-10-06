@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shortcut-audit"
+version = "1.0.0"
+description = "Deconfounded AUC and site-shortcut checks for multi-site medical classifiers"
+readme = "shortcut_audit/README.md"
+license = {text = "MIT"}
+authors = [{name = "Sandesh Bhatta", email = "sbhatta@albany.edu"}]
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.22", "pandas>=1.4", "scikit-learn>=1.1"]
+
+[project.urls]
+Repository = "https://github.com/sandesh-bhatta-9/pharyngitis-fusion"
+
+[tool.setuptools]
+packages = ["shortcut_audit"]

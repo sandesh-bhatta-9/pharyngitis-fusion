@@ -52,6 +52,7 @@ from .common import (add_config_arg, backbone_key, inner_cv, load_config, load_d
                      oof_frame, outer_splits, save_oof, set_seed)
 from .evaluate import bootstrap_auc
 from .stats import corrected_ttest
+from shortcut_audit import LeaceEraser as Leace, adjusted_auc, balance_weights  # noqa: E402
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", message=".*did not converge.*")
@@ -76,18 +77,6 @@ def groups(df):
 
 def onehot(g, levels):
     return (g[:, None] == np.asarray(levels)[None, :]).astype(float)
-
-
-def balance_weights(y, g):
-    """w = P(y) / P(y | g): makes y independent of g under the weighted distribution."""
-    w = np.ones(len(y))
-    for v in np.unique(g):
-        m = g == v
-        for c in (0, 1):
-            pc, pcg = (y == c).mean(), (y[m] == c).mean()
-            if pcg > 0:
-                w[m & (y == c)] = pc / pcg
-    return w
 
 
 # ---------------------------------------------------------------- colour constancy features
@@ -140,27 +129,6 @@ class GroupCenter:
             mu, sd = self.stats.get(v, self.glob)
             out[g == v] = (X[g == v] - mu) / sd
         return out
-
-
-class Leace:
-    """Least-squares concept erasure (Belrose et al., NeurIPS 2023) for a one-hot concept Z."""
-
-    def fit(self, X, Z):
-        self.mu = X.mean(0)
-        Xc, Zc = X - self.mu, Z - Z.mean(0)
-        S = Xc.T @ Xc / len(X)
-        s, U = np.linalg.eigh(S)
-        keep = s > s.max() * 1e-8
-        U, s = U[:, keep], s[keep]
-        W, W_inv = (U / np.sqrt(s)) @ U.T, (U * np.sqrt(s)) @ U.T
-        A = W @ (Xc.T @ Zc / len(X))
-        Q, R = np.linalg.qr(A)
-        Q = Q[:, np.abs(np.diag(R)) > 1e-10]
-        self.M = W_inv @ Q @ Q.T @ W
-        return self
-
-    def transform(self, X):
-        return X - (X - self.mu) @ self.M.T
 
 
 def phone_probe_auc(F_tr, g_tr, F_te, g_te):
@@ -330,7 +298,8 @@ def shortcut_metrics(oof, g_map, w_map, n_boot, rng):
     folds, reps = [], []
     for (r, k), f in oof.groupby(["repeat", "fold"]):
         folds.append({"repeat": r, "fold": k, "auc": roc_auc_score(f["y"], f["p"]),
-                      "auc_deconf": roc_auc_score(f["y"], f["p"], sample_weight=f["w"])})
+                      "auc_deconf": roc_auc_score(f["y"], f["p"], sample_weight=f["w"]),
+                      "auc_adjusted": adjusted_auc(f["y"], f["p"], f["g"])})
     for r, f in oof.groupby("repeat"):
         y, p, w = f["y"].to_numpy(), f["p"].to_numpy(), f["w"].to_numpy()
         row = {"repeat": r, "auc": roc_auc_score(y, p), "auc_deconf": roc_auc_score(y, p, sample_weight=w)}
@@ -340,6 +309,7 @@ def shortcut_metrics(oof, g_map, w_map, n_boot, rng):
             if 0 < y[i].sum() < n:
                 boot.append(roc_auc_score(y[i], p[i], sample_weight=w[i]))
         row["auc_deconf_lo"], row["auc_deconf_hi"] = np.percentile(boot, [2.5, 97.5])
+        row["auc_adjusted"] = adjusted_auc(y, p, f["g"].to_numpy())
         for code, name in PHONES.items():
             s = f[f["g"] == code]
             row[f"auc_{name}"] = roc_auc_score(s["y"], s["p"])
@@ -357,6 +327,9 @@ def cmd_audit(cfg_main, cfg_mit, main_models, pairs, n_boot):
     n = len(df)
     sources = [(m, cfg_main) for m in main_models if (cfg_main["paths"]["oof"] / f"{m}.csv").exists()]
     sources += [(p.stem, cfg_mit) for p in sorted(cfg_mit["paths"]["oof"].glob("mit_*.csv"))]
+    sources += [(p.stem, cfg_mit) for p in sorted(cfg_mit["paths"]["oof"].glob("ftmit_*.csv"))]
+    ft_path = cfg_main["paths"]["metrics"] / "mitigation_finetune_probe.csv"
+    ft_probes = pd.read_csv(ft_path) if ft_path.exists() else pd.DataFrame()
     probes_path = cfg_main["paths"]["metrics"] / "mitigation_phone_probe.csv"
     probes = pd.read_csv(probes_path) if probes_path.exists() else pd.DataFrame()
     summary, fold_tab = [], {}
@@ -364,7 +337,8 @@ def cmd_audit(cfg_main, cfg_mit, main_models, pairs, n_boot):
         folds, reps = shortcut_metrics(load_oof(c, name), g_map, w_map, n_boot, np.random.default_rng(cfg_main["seed"]))
         fold_tab[name] = folds.set_index(["repeat", "fold"])
         row = {"model": name, "repeats": len(reps)}
-        for col in ["auc", "auc_deconf", "auc_deconf_lo", "auc_deconf_hi", "auc_Samsung", "auc_Xiaomi", "auc_within"]:
+        for col in ["auc", "auc_deconf", "auc_deconf_lo", "auc_deconf_hi", "auc_adjusted", "auc_Samsung", "auc_Xiaomi",
+                    "auc_within"]:
             row[col], row[col + "_sd"] = reps[col].mean(), reps[col].std(ddof=1) if len(reps) > 1 else np.nan
         if name.startswith("mit_") and not probes.empty:
             meth, bb = name[4:].split("_", 1)[0], None
@@ -373,19 +347,26 @@ def cmd_audit(cfg_main, cfg_mit, main_models, pairs, n_boot):
                     meth, bb = name[4:-len(b) - 1], b
             hit = probes[(probes["backbone"] == bb) & (probes["method"] == ("base" if meth == "reweight" else meth))]
             row["phone_id_auc"] = hit["phone_id_auc"].mean() if len(hit) else np.nan
+        if name.startswith("ftmit_") and not ft_probes.empty:
+            meth, key = name[6:].split("_", 1)
+            hit = ft_probes[(ft_probes["method"] == meth) & (ft_probes["model"] == key)]
+            row["phone_id_auc"] = hit["phone_id_auc"].mean() if len(hit) else np.nan
         summary.append(row)
     summary = pd.DataFrame(summary)
 
     tests = []
     for name in fold_tab:
-        if not name.startswith("mit_") or name.startswith("mit_base_"):
+        if name.startswith("ftmit_") and not name.startswith("ftmit_erm_"):
+            ref = "ftmit_erm_" + name.split("_", 2)[2]  # end-to-end methods vs ERM with the same selection rule
+        elif name.startswith("mit_") and not name.startswith("mit_base_"):
+            ref = "mit_base_" + next(b for b in ("vit_small_patch14_dinov2", "convnext_tiny") if name.endswith(b))
+        else:
             continue
-        ref = "mit_base_" + next(b for b in ("vit_small_patch14_dinov2", "convnext_tiny") if name.endswith(b))
         if ref not in fold_tab:
             continue
         a, b = fold_tab[name], fold_tab[ref]
         common = a.index.intersection(b.index)
-        for metric in ("auc", "auc_deconf"):
+        for metric in ("auc", "auc_deconf", "auc_adjusted"):
             d, t, p = corrected_ttest(a.loc[common, metric] - b.loc[common, metric], n * 4 / 5, n / 5, one_sided=False)
             tests.append({"model": name, "vs": ref, "metric": metric, "delta": d, "t": t, "p_two_sided": p})
     for a_name, b_name in pairs:  # main-model comparisons on the deconfounded metric
@@ -395,7 +376,7 @@ def cmd_audit(cfg_main, cfg_mit, main_models, pairs, n_boot):
         common = a.index.intersection(b.index)
         if len(common) < 2:
             continue
-        for metric in ("auc", "auc_deconf"):
+        for metric in ("auc", "auc_deconf", "auc_adjusted"):
             d, t, p = corrected_ttest(a.loc[common, metric] - b.loc[common, metric], n * 4 / 5, n / 5, one_sided=False)
             tests.append({"model": a_name, "vs": b_name, "metric": metric, "delta": d, "t": t, "p_two_sided": p})
     tests = pd.DataFrame(tests)

@@ -8,6 +8,7 @@ Subcommands:
   subgroups    forest plot of AUC by subgroup for one model (E4)
   shortcut     paper Figure 3: AUC overall vs within phone (A) and cross-phone transfer (B)
   mitigation   paper Figure 4: pooled vs deconfounded AUC for main models (A) and mitigation methods (B)
+  validation   paper Figure 5: metric behaviour vs confounding strength, simulated (A) and resampled real data (B)
 
 Usage:
     python -m src.figures roc --models gated_convnext_tiny sym_lgbm img_lr_convnext_tiny
@@ -278,10 +279,46 @@ def fig_mitigation(cfg, out, backbone="vit_small_patch14_dinov2"):
     save(fig, out, "fig_mitigation")
 
 
+def fig_validation(cfg, out):
+    """A: simulation, learned marker + site model. B: real data resampled to a given prevalence gap, image model."""
+    m = cfg["paths"]["metrics"]
+    sim = pd.read_csv(m / "validate_simulation_summary.csv")
+    sw = pd.read_csv(m / "validate_sweep_summary.csv")
+    fig, (a, b) = plt.subplots(1, 2, figsize=(7.4, 3.1), sharey=True)
+    series = [("auc", "Pooled AUC", SERIES[0], "o"), ("auc_deconf", "Deconfounded AUC", SERIES[1], "s"),
+              ("auc_adjusted", "Adjusted AUC (Janes & Pepe)", SERIES[2], "^")]
+    d = sim[sim["score"] == "learned (marker + site)"]
+    for col, lab, c, mk in series:
+        a.plot(d["delta"], d[col], marker=mk, color=c, ms=4, label=lab)
+    a.plot(d["delta"], d["auc_target"], color=INK, ls="--", lw=1.2, label="Target: AUC without confounding")
+    s_only = sim[sim["score"] == "site only"]
+    a.plot(s_only["delta"], s_only["auc"], color=SERIES[0], ls=":", lw=1.2, label="Site-only score, pooled AUC")
+    a.set_title("A  Simulation (true marker AUC 0.60)", loc="left", fontsize=8.5)
+    a.set_xlabel("Prevalence gap between sites")
+    a.set_ylabel("AUC")
+    img, ph = sw[sw["model"] == "image"], sw[sw["model"] == "phone"]
+    for col, lab, c, mk in series:
+        b.errorbar(img["delta"], img[f"{col}_mean"], yerr=img[f"{col}_std"], marker=mk, color=c, ms=4,
+                   elinewidth=1, capsize=0)
+    b.axhline(img.loc[img["delta"] == 0, "auc_mean"].iloc[0], color=INK, ls="--", lw=1.2)
+    b.plot(ph["delta"], ph["auc_mean"], color=SERIES[0], ls=":", lw=1.2)
+    b.axvline(0.29, color=REF, lw=0.8)
+    b.text(0.295, 0.45, "full data", fontsize=6.5, color=MUTED, rotation=90, va="bottom")
+    b.set_title("B  PGUPharyngitis resampled (DINOv2 image)", loc="left", fontsize=8.5)
+    b.set_xlabel("Prevalence gap between phones")
+    for ax in (a, b):
+        ax.axhline(0.5, color=REF, lw=0.8)
+        ax.set_xticks([0, 0.1, 0.2, 0.3, 0.4])
+        ax.set_ylim(0.42, 0.8)
+    fig.legend(*a.get_legend_handles_labels(), loc="lower center", ncol=3, fontsize=6.8, bbox_to_anchor=(0.5, -0.02))
+    fig.tight_layout(rect=(0, 0.1, 1, 1))
+    save(fig, out, "fig_validation")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     add_config_arg(ap)
-    ap.add_argument("kind", choices=["roc", "calibration", "dca", "ablation", "subgroups", "shortcut", "mitigation"])
+    ap.add_argument("kind", choices=["roc", "calibration", "dca", "ablation", "subgroups", "shortcut", "mitigation", "validation"])
     ap.add_argument("--models", nargs="*", default=[])
     ap.add_argument("--model", help="for subgroups")
     ap.add_argument("--labels", nargs="*", default=[], help="display names, same order as --models")
@@ -295,6 +332,8 @@ def main():
         fig_shortcut(cfg, out)
     elif args.kind == "mitigation":
         fig_mitigation(cfg, out)
+    elif args.kind == "validation":
+        fig_validation(cfg, out)
     elif args.kind == "subgroups":
         fig_subgroups(cfg, args.model or args.models[0], out)
     else:

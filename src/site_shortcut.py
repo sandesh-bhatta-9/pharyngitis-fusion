@@ -12,6 +12,8 @@ Subcommands:
   largeimg  within-phone AUC of saved models restricted to images with original short side >= --min-side px.
   lowlevel  "low-level" baseline: colour, brightness, darkness and edge statistics of each photo (no deep features);
             label AUC overall and within phone, and how well these statistics identify the phone.
+  compare   patients and labelling by phone: votes per patient, agreement, ties, prevalence under each tie rule,
+            symptom rates (chi-square, Bonferroni) -> site_compare.csv and site_compare_symptoms.csv
 
 Usage:
     python -m src.site_shortcut size
@@ -184,6 +186,35 @@ def cmd_lowlevel(cfg):
     return pd.DataFrame(rows)
 
 
+def cmd_compare(cfg):
+    from scipy import stats
+    df, cols = load_data(cfg)
+    df = df.assign(ph=df["exif_phone"].fillna("unknown"))
+    sym = [c for c in cols["binary"] if c != "gender"]
+    df["n_symptoms"] = df[sym].sum(axis=1)
+    rows = []
+    for name, g in [("All", df)] + [(PHONES.get(c, "Unknown"), df[df["ph"] == c]) for c in ["SM-G998B", "2201117SG", "unknown"]]:
+        rows.append({"group": name, "n": len(g), "age_mean": g["age"].mean(), "male_pct": 100 * g["gender"].mean(),
+                     "votes_median": g["n_votes"].median(), "votes_min": g["n_votes"].min(), "votes_max": g["n_votes"].max(),
+                     "unanimous_pct": 100 * (g["agreement"] == 1).mean(), "tie_pct": 100 * g["tie"].mean(),
+                     "agreement_mean": g["agreement"].mean(), "bacterial_ties_bact_pct": 100 * g["y"].mean(),
+                     "bacterial_ties_nonbact_pct": 100 * (g["y_soft"] > 0.5).mean(),
+                     "n_symptoms_mean": g["n_symptoms"].mean()})
+    k = df[df["ph"].isin(PHONES)]
+    a, b = (k[k["ph"] == c] for c in PHONES)
+    tests = {c: stats.mannwhitneyu(a[c], b[c]).pvalue for c in ("n_votes", "agreement", "n_symptoms", "age")}
+    tests["tie"] = stats.chi2_contingency(pd.crosstab(k["ph"], k["tie"]))[1]
+    print("Samsung vs Xiaomi p values:", {t: f"{v:.2g}" for t, v in tests.items()})
+    sym_rows = []
+    for c in sym:
+        t = pd.crosstab(k["ph"], k[c])
+        p = stats.chi2_contingency(t)[1] if t.shape[1] > 1 else 1.0
+        sym_rows.append({"symptom": c, "samsung_pct": 100 * a[c].mean(), "xiaomi_pct": 100 * b[c].mean(), "p": p,
+                         "p_bonferroni": min(1.0, p * len(sym))})
+    pd.DataFrame(sym_rows).sort_values("p").to_csv(cfg["paths"]["metrics"] / "site_compare_symptoms.csv", index=False)
+    return pd.DataFrame(rows).assign(**{f"p_{t}": v for t, v in tests.items()})
+
+
 def cmd_largeimg(cfg, models, min_side):
     df, _ = load_data(cfg)
     wh = df["orig_size"].str.split("x", expand=True).astype(float)
@@ -211,6 +242,7 @@ def main():
         if name == "cross":
             s.add_argument("--n-boot", type=int, default=1000)
     sub.add_parser("lowlevel")
+    sub.add_parser("compare")
     s = sub.add_parser("largeimg")
     s.add_argument("--models", nargs="+", required=True)
     s.add_argument("--min-side", type=int, default=500)
@@ -227,6 +259,8 @@ def main():
         res = cmd_cross(cfg, bbs, args.n_boot)
     elif args.cmd == "lowlevel":
         res = cmd_lowlevel(cfg)
+    elif args.cmd == "compare":
+        res = cmd_compare(cfg)
     else:
         res = cmd_largeimg(cfg, args.models, args.min_side)
     path = out / f"site_{args.cmd}.csv"
